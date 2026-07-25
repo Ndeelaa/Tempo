@@ -1,20 +1,10 @@
 # Tempo
 
-Prototype mobile haute fidélité des trois premiers écrans d’onboarding de Tempo, une application qui recommande une expérience culturelle selon l’émotion et son intensité.
+Prototype mobile haute fidélité des trois premiers écrans d’onboarding de Tempo, une application qui recommande une expérience culturelle selon l’émotion et son intensité. Le projet utilise uniquement HTML, CSS et JavaScript natifs.
 
 ## Lancer le projet
 
-```bash
-npm install
-npm run dev
-```
-
-Puis ouvrir l’adresse locale affichée par Vite. Pour vérifier la version de production :
-
-```bash
-npm run build
-npm run preview
-```
+Ouvrir le dossier dans VS Code, puis cliquer sur **Go Live**. Il est aussi possible d’ouvrir directement `index.html` dans un navigateur.
 
 ## Parcours inclus
 
@@ -22,4 +12,4 @@ npm run preview
 2. Réglage de l’intensité et recommandation locale dynamique.
 3. Détail de la sortie, bénéfices et témoignages, puis confirmation.
 
-Toutes les données sont fictives et locales. Aucun service externe ni back-end n’est requis.
+Toutes les données sont fictives et locales. Aucun framework, service externe, gestionnaire de paquets ou back-end n’est requis.
