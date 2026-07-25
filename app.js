@@ -32,7 +32,8 @@ const culturalEvents = [
 
 let storedFavorites = []
 try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[]') } catch (_) { storedFavorites = [] }
-const state = { screen: 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true }
+const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
+const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true }
 const app = document.querySelector('#app')
 
 const icon = (name, size = 20) => {
@@ -76,37 +77,43 @@ function activityCard() {
 function screenOne() {
   const emotion = emotions.find(item => item.id === state.emotion)
   return `<section class="screen emotion-screen">
-    <header class="topbar"><span class="logo">tempo<span>.</span></span>${progress(1)}<button class="skip" data-action="skip">Passer</button></header>
-    <div class="intro"><p class="kicker">Ton humeur ouvre la voie</p><h1>Pas sûr·e de ce que tu veux faire aujourd’hui&nbsp;?</h1><p>Choisis une émotion. Tempo trouvera une expérience qui suit ton rythme.</p></div>
+    <header class="topbar"><span class="logo">tempo<span>.</span></span>${progress(1)}<button class="skip" data-action="skip-onboarding">Passer</button></header>
+    <div class="onboarding-step">1 sur 3 · Ton humeur</div>
+    <div class="intro onboarding-intro"><p class="kicker">Commence par toi</p><h1>Comment tu te sens, là maintenant&nbsp;?</h1><p>Touche l’émotion qui te ressemble le plus. Il n’y a pas de mauvaise réponse.</p></div>
     <div class="wheel-wrap"><div class="wheel" role="group" aria-label="Choisir une émotion">${emotions.map((item,index) => `<button class="emotion-choice pos-${index} ${state.emotion && state.emotion !== item.id ? 'muted' : ''}" data-emotion="${item.id}" aria-label="Je me sens ${item.label.toLowerCase()}" aria-pressed="${state.emotion === item.id}"><span class="emotion-blob ${item.shape} ${state.emotion === item.id ? 'selected' : ''}" style="--blob-color:${item.color};--blob-secondary:${item.secondary}">${face(item.face)}</span><span class="emotion-label">${item.label}</span></button>`).join('')}</div><div class="wheel-center" aria-hidden="true"><span>ton humeur</span><b>maintenant</b></div></div>
     <div class="selection-copy">Aujourd’hui, je me sens <strong>${emotion.label.toLowerCase()}</strong>.</div>
-    <div class="bottom-actions">${primaryButton('Continuer','next')}</div>
+    <div class="onboarding-actions">${primaryButton(`Continuer avec « ${emotion.label} »`,'next-onboarding')}</div>
   </section>`
 }
 
 function screenTwo() {
   const emotion = emotions.find(item => item.id === state.emotion) || emotions[4]
   return `<section class="screen intensity-screen">
-    <header class="topbar">${backButton()}${progress(2)}<span class="top-caption">Ton Tempo du moment</span></header>
-    <div class="intro compact"><p class="kicker">Triste, mais pas seulement</p><h1>À quel point te sens-tu triste&nbsp;?</h1><p>Choisis le niveau qui correspond à ton ressenti.</p></div>
+    <header class="topbar">${backButton()}${progress(2)}<button class="skip" data-action="skip-onboarding">Passer</button></header>
+    <div class="onboarding-step">2 sur 3 · L’intensité</div>
+    <div class="intro compact onboarding-intro"><p class="kicker">Chaque nuance compte</p><h1>À quel point te sens-tu ${emotion.label.toLowerCase()}&nbsp;?</h1><p>Choisis simplement le niveau qui correspond à ton ressenti.</p></div>
     <div class="living-blob">${blob(emotion,true)}<span class="blob-halo"></span></div>
     <div class="intensity-block"><div class="intensity-track" role="radiogroup" aria-label="Intensité de l’émotion">${recommendations.map((item,index) => `<button role="radio" aria-checked="${state.intensity === index+1}" aria-label="${item.label}, niveau ${index+1} sur 5" class="${state.intensity === index+1 ? 'active' : ''}" data-intensity="${index+1}"><span style="--dot-size:${15+(index+1)*3}px"></span></button>`).join('')}</div><div class="intensity-copy"><strong>${recommendations[state.intensity-1].label}</strong><span>Intensité ${state.intensity} sur 5</span></div></div>
-    <div class="recommendation-wrap">${activityCard()}</div>
-    <p class="why">${icon('sparkles',15)} Tempo associe ton émotion, son intensité et ton besoin de calme à une expérience culturelle adaptée.</p>
-    <div class="bottom-actions flow">${primaryButton('Découvrir cette expérience','next')}<button class="text-link" data-action="restart">Essayer une autre émotion</button></div>
+    <div class="onboarding-explanation">${icon('sparkles',16)}<p><strong>Tempo comprend la nuance.</strong><br>Ton émotion et son intensité aideront à choisir une sortie adaptée.</p></div>
+    <div class="onboarding-actions flow">${primaryButton('Voir comment Tempo m’aide','next-onboarding')}<button class="text-link" data-action="back">Choisir une autre émotion</button></div>
   </section>`
 }
 
 function screenThree() {
-  return `<section class="screen detail-screen">
-    <header class="topbar detail-top">${backButton()}${progress(3)}<button class="icon-button ${state.saved ? 'saved' : ''}" data-action="save" aria-label="Sauvegarder cette activité" aria-pressed="${state.saved}">${icon(state.saved ? 'check' : 'bookmark')}</button></header>
-    <div class="hero-art" role="img" aria-label="Composition abstraite évoquant l’eau et la lumière"><div class="hero-shape one"></div><div class="hero-shape two"></div><div class="hero-shape three"></div><div class="match">${icon('heart',15)}92 % en accord<br>avec ton Tempo</div><div class="hero-title"><span>Cinéma contemplatif</span><h1>Les Silences<br>de l’eau</h1></div></div>
-    <div class="event-details"><div><span>Lieu</span><strong>Studio Lumière<br>Paris 11e</strong></div><div><span>Quand</span><strong>Aujourd’hui<br>18 h 30</strong></div><div><span>Durée</span><strong>1 h 35<br>8 € · 1,8 km</strong></div></div>
-    <section class="editorial-section"><p class="kicker">Pourquoi ce choix</p><h2>Une expérience pour ralentir sans s’isoler</h2><p>Une séance intimiste pensée pour créer une parenthèse calme, laisser l’esprit respirer et retrouver progressivement de l’élan.</p></section>
-    <section class="benefits"><h2>Ce que cette expérience pourrait t’apporter</h2><div><article>${icon('pause')}<span>Ralentir</span></article><article>${icon('compass')}<span>S’évader</span></article><article>${icon('waves')}<span>Revenir à soi</span></article></div></section>
-    <section class="social"><div class="section-heading"><div><p class="kicker">Des ressentis, pas des notes</p><h2>Ils avaient un Tempo similaire</h2></div><span class="rating">4,7 / 5<small>128 expériences similaires</small></span></div><div class="testimonial-row">${testimonials.map((item,index) => `<article class="testimonial"><div class="avatar">${item.name[0]}</div><div><strong>${item.name}</strong><span>${item.tempo}</span></div><p>« ${item.quote} »</p><span class="card-index">0${index+1}</span></article>`).join('')}</div></section>
-    <div class="bottom-actions detail-actions">${state.confirmed ? `<div class="confirmation"><span>${icon('sparkles',17)}</span><div><strong>Ton Tempo est prêt.</strong><small>Cette sortie t’attend.</small></div></div>` : ''}${primaryButton(state.confirmed ? 'Entrer dans l’application' : 'Choisir cette sortie','confirm')}<button class="secondary-button" data-action="back">Voir une autre proposition</button></div>
-    <footer>tempo<span>.</span><small>La culture au rythme de ton humeur.</small>${icon('arrowRight')}</footer>
+  return `<section class="screen onboarding-final-screen">
+    <header class="topbar">${backButton()}${progress(3)}<span></span></header>
+    <div class="onboarding-step">3 sur 3 · Ta prochaine sortie</div>
+    <div class="intro onboarding-intro"><p class="kicker">Tempo fait le lien</p><h1>Ton humeur devient une expérience.</h1><p>Tempo transforme ce que tu ressens en recommandations culturelles qui suivent vraiment ton rythme.</p></div>
+    <div class="onboarding-story" aria-label="Ton humeur mène à une sortie adaptée">
+      <div class="story-node mood-node">${blob(emotions.find(item=>item.id===state.emotion)||emotions[4])}<span>Ton humeur</span></div>
+      <div class="story-line"><i></i>${icon('arrowRight',17)}</div>
+      <div class="story-node tempo-node">${tempoBlob('onboarding-tempo-blob')}<span>Ton Tempo</span></div>
+      <div class="story-line"><i></i>${icon('arrowRight',17)}</div>
+      <div class="story-node outing-node"><div class="outing-art visual-water">${icon('sparkles')}</div><span>Ta sortie</span></div>
+    </div>
+    <article class="onboarding-result"><span class="result-icon">${icon('check',18)}</span><div><p class="kicker">Une recommandation, expliquée</p><h2>Une sortie adaptée à ton énergie</h2><p>Tu vois pourquoi elle te correspond, avant même de choisir.</p></div></article>
+    <div class="onboarding-promise"><span>${icon('compass',18)}Culture</span><span>${icon('heart',18)}Émotion</span><span>${icon('sparkles',18)}Découverte</span></div>
+    <div class="onboarding-actions">${primaryButton('Entrer dans Tempo','enter-app')}<button class="secondary-button" data-action="back">Revenir en arrière</button></div>
   </section>`
 }
 
@@ -187,7 +194,7 @@ function favoritesScreen() {
 }
 
 function placeholderScreen() {
-  return `<section class="screen app-screen placeholder-screen">${appHeader(state.activeTab==='profile'?'Profil':'Explorer')}<div class="profile-hero">${tempoBlob('profile-blob')}<p class="kicker">Bientôt dans Tempo</p><h1>${state.activeTab==='profile'?'Ton espace personnel':'Explore à ton rythme'}</h1><p>Cette section sera enrichie dans la prochaine étape du projet.</p><button class="primary-button" data-screen="4"><span>Retour à l’accueil</span><span class="button-icon">${icon('arrowRight')}</span></button></div>${bottomNavigation()}</section>`
+  return `<section class="screen app-screen placeholder-screen">${appHeader(state.activeTab==='profile'?'Profil':'Explorer')}<div class="profile-hero">${tempoBlob('profile-blob')}<p class="kicker">Bientôt dans Tempo</p><h1>${state.activeTab==='profile'?'Ton espace personnel':'Explore à ton rythme'}</h1><p>Cette section sera enrichie dans la prochaine étape du projet.</p><button class="primary-button" data-screen="4"><span>Retour à l’accueil</span><span class="button-icon">${icon('arrowRight')}</span></button>${state.activeTab==='profile'?'<button class="secondary-button replay-button" data-action="replay-onboarding">Revoir l’onboarding</button>':''}</div>${bottomNavigation()}</section>`
 }
 
 function render() {
@@ -231,6 +238,8 @@ app.addEventListener('click', event => {
   else if (actionButton) {
     const action = actionButton.dataset.action
     if (action === 'next' || action === 'skip') state.screen++
+    if (action === 'next-onboarding') state.screen=Math.min(3,state.screen+1)
+    if (action === 'skip-onboarding' || action === 'enter-app') { state.screen=4; state.activeTab='home'; localStorage.setItem('tempo-onboarding-done','true') }
     if (action === 'back') state.screen--
     if (action === 'restart') { state.screen = 1; state.confirmed = false }
     if (action === 'save') state.saved = !state.saved
@@ -241,6 +250,7 @@ app.addEventListener('click', event => {
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
     if (action === 'go-home') { state.screen=4; state.activeTab='home'; state.bookingConfirmed=false }
+    if (action === 'replay-onboarding') { state.screen=1; state.confirmed=false; localStorage.removeItem('tempo-onboarding-done') }
   }
   render()
 })
