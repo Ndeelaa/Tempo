@@ -13,3 +13,14 @@ Ouvrir le dossier dans VS Code, puis cliquer sur **Go Live**. Il est aussi possi
 3. Détail de la sortie, bénéfices et témoignages, puis confirmation.
 
 Toutes les données sont fictives et locales. Aucun framework, service externe, gestionnaire de paquets ou back-end n’est requis.
+
+## Parcours disponible
+
+- onboarding émotionnel en trois étapes ;
+- accueil et recommandations de proximité ;
+- composition gestuelle d’un profil Tempo ;
+- profil émotionnel et recommandations filtrables ;
+- détail d’événement, favoris locaux et action finale ;
+- navigation mobile persistante et états vides.
+
+Le prototype est optimisé pour un iPhone 15 et s’adapte aux écrans mobiles de 375 à 430 px.
