@@ -35,7 +35,7 @@ try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
 let savedAppearance = {}
 try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
-const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
+const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
 const app = document.querySelector('#app')
 const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
 
@@ -85,6 +85,12 @@ function drawingSvg(id='drawing',live=true){
   const drawn=state.strokes.filter(stroke=>!stroke.eraser).map(stroke=>`<path class="brush-${stroke.brush}" d="${stroke.d}" stroke-width="${width(stroke)}" ${stroke.brush==='watercolor'?`filter="url(#watercolor-${id})"`:stroke.brush==='chalk'?`filter="url(#chalk-${id})" stroke-dasharray="8 3"`:''}/>`).join('')
   const erased=state.strokes.filter(stroke=>stroke.eraser).map(stroke=>`<path d="${stroke.d}" stroke="black" stroke-width="${stroke.size*2}"/>`).join('')
   return `<svg class="free-drawing" viewBox="0 0 350 390" preserveAspectRatio="none"><defs><linearGradient id="gradient-${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${colors[0]}"/><stop offset=".45" stop-color="${colors[1]}"/><stop offset="1" stop-color="${colors[2]}"/></linearGradient><filter id="watercolor-${id}"><feTurbulence baseFrequency=".025" numOctaves="3" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="7"/></filter><filter id="chalk-${id}"><feTurbulence baseFrequency=".8" numOctaves="2" result="noise"/><feBlend in="SourceGraphic" in2="noise" mode="multiply"/></filter><mask id="mask-${id}"><rect width="350" height="390" fill="white"/>${erased}${live?'<path data-live-eraser d="" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>':''}</mask></defs><g data-strokes mask="url(#mask-${id})" fill="none" stroke="url(#gradient-${id})" stroke-linecap="round" stroke-linejoin="round">${drawn}${live?'<path data-live-stroke d=""/>':''}</g></svg>`
+}
+function smoothPath(points){
+  if(points.length<2)return `M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`
+  let path=`M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`
+  for(let index=1;index<points.length-1;index++){const current=points[index],next=points[index+1],midX=(current[0]+next[0])/2,midY=(current[1]+next[1])/2;path+=` Q ${current[0].toFixed(1)} ${current[1].toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`}
+  const last=points[points.length-1];return `${path} L ${last[0].toFixed(1)} ${last[1].toFixed(1)}`
 }
 
 function activityCard() {
@@ -179,7 +185,7 @@ function miniEventCard(event) {
 
 function homeScreen() {
   return `<section class="screen app-screen home-screen">${appHeader()}<div class="home-greeting"><div><p>Bonjour Alex</p><h1>Quel est ton rythme aujourd’hui&nbsp;?</h1><span>Laisse ton humeur choisir ta prochaine expérience.</span></div><div class="avatar">A</div></div>
-    <article class="my-tempo-card"><div class="tempo-orbit">${tempoBlob('home-blob')}</div><div class="tempo-card-copy"><p class="kicker">Mon Tempo</p><h2>Compose ton humeur</h2><p>Quelques gestes suffisent pour trouver une sortie qui te ressemble aujourd’hui.</p><button class="light-button" data-screen="5">Commencer ${icon('arrowRight',16)}</button></div></article>
+    <article class="my-tempo-card"><div class="tempo-orbit">${tempoBlob('home-blob')}</div><div class="tempo-card-copy"><p class="kicker">Mon Tempo</p><h2>Illustre ton ressenti actuel</h2><p>Quelques gestes suffisent pour créer une émotion qui te ressemble aujourd’hui.</p><button class="light-button" data-screen="5"><span>Créer mon émotion</span>${icon('arrowRight',16)}</button></div></article>
     <section class="home-section"><div class="list-heading"><h2>Près de toi ce soir</h2><button data-screen="7">Tout voir</button></div><div class="mini-events">${[culturalEvents[1],culturalEvents[4],culturalEvents[5]].map(miniEventCard).join('')}</div></section>
     <section class="last-tempo"><div class="last-mini-blob">${tempoBlob()}</div><div><p class="kicker">Ton dernier Tempo · Aujourd’hui</p><h3>${escapeHTML(state.profile.name)}</h3><button data-screen="7">Revoir mes recommandations ${icon('arrowRight',14)}</button></div></section>${bottomNavigation()}</section>`
 }
@@ -194,14 +200,14 @@ const emotionLibrary=[
 ]
 const expressionChoices=[['happy','Joyeuse'],['sad','Triste'],['angry','Fâchée'],['confused','Confuse'],['pleased','Satisfaite'],['pain','Peinée'],['scared','Effrayée'],['serious','Sérieuse'],['silly','Espiègle'],['flirty','Charmeuse'],['nervous','Nerveuse'],['tired','Fatiguée'],['surprised','Surprise'],['irritated','Irritée'],['rage','Furieuse'],['disgusted','Dégoûtée'],['confident','Confiante'],['concerned','Préoccupée'],['curious','Curieuse'],['pouty','Boudaire'],['bored','Ennuyée'],['laughing','Hilare'],['embarrassed','Gênée'],['calm','Calme'],['crying','En pleurs'],['devious','Malicieuse'],['pensive','Pensive'],['excited','Émerveillée'],['triumph','Triomphante']]
 const expressionSounds={calm:'waves',pleased:'waves',confident:'waves',happy:'chimes',laughing:'chimes',excited:'chimes',triumph:'chimes',angry:'thunder',rage:'thunder',irritated:'thunder',sad:'rain',crying:'rain',pensive:'rain',nervous:'wind',scared:'wind',concerned:'wind',curious:'mystery',confused:'mystery',silly:'mystery'}
-const colorSets={night:['#425D9C','#9C82DF','#E9B5CC'],sun:['#FFD85A','#FFA178','#FF8A67'],sage:['#A9C878','#748DD5','#C9A8F4'],coral:['#FF8A67','#E9B5CC','#9C82DF'],lavender:['#C9A8F4','#9C82DF','#748DD5']}
+const colorSets={night:['#425D9C','#9C82DF','#E9B5CC'],sun:['#FFD85A','#FFA178','#FF8A67'],sage:['#A9C878','#748DD5','#C9A8F4'],coral:['#FF8A67','#E9B5CC','#9C82DF'],lavender:['#C9A8F4','#9C82DF','#748DD5'],rose:['#F2C6D8','#E989B4','#B98BD4'],ocean:['#75D5D0','#4C9DD8','#425D9C'],mint:['#D8EAA8','#8ED1B2','#74AFC4'],sunset:['#FFD85A','#FF8A67','#9C82DF'],earth:['#D9B58C','#A9C878','#7D6B5D']}
 
 function customizationPanel() {
   const panel=state.customPanel
   if(!panel) return ''
   if(panel==='library') return `<section class="custom-panel library-panel"><div class="panel-heading"><div><p class="kicker">Besoin d’inspiration&nbsp;?</p><h2>Bibliothèque d’émotions</h2></div><button data-action="close-panel" aria-label="Fermer">×</button></div><div class="emotion-library">${emotionLibrary.map((item,index)=>`<button data-library="${index}"><span class="library-blob color-${item.color} shape-${item.shape} texture-${item.texture}"></span><strong>${item.name}</strong><small>Utiliser comme point de départ</small></button>`).join('')}</div></section>`
   const content={
-    color:`<div class="choice-grid colors">${[['night','Nuit'],['sun','Solaire'],['sage','Sauge'],['coral','Corail'],['lavender','Lavande']].map(([value,label])=>`<button class="${state.appearance.color===value?'active':''}" data-appearance="color" data-value="${value}"><i class="color-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
+    color:`<div class="choice-grid colors color-gallery">${[['night','Nuit'],['sun','Solaire'],['sage','Sauge'],['coral','Corail'],['lavender','Lavande'],['rose','Rose'],['ocean','Océan'],['mint','Menthe'],['sunset','Coucher'],['earth','Terre']].map(([value,label])=>`<button class="${state.appearance.color===value?'active':''}" data-appearance="color" data-value="${value}"><i class="color-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     shape:`<div class="choice-grid shapes scroll-choices">${[['organic','Organique'],['round','Ronde'],['wide','Étendue'],['burst','Vibrante'],['soft','Douce'],['spiky','Tendue'],['droop','Tombante']].map(([value,label])=>`<button class="${state.appearance.shape===value?'active':''}" data-appearance="shape" data-value="${value}"><i class="shape-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     texture:`<div class="choice-grid textures">${[['smooth','Lisse'],['grain','Granuleux'],['cloud','Nébuleux'],['watercolor','Aquarelle']].map(([value,label])=>`<button class="${state.appearance.texture===value?'active':''}" data-appearance="texture" data-value="${value}"><i class="texture-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     expression:`<div class="expression-picker"><label><span>Choisir dans la liste</span><select data-expression-select>${expressionChoices.map(([value,label])=>`<option value="${value}" ${state.appearance.expression===value?'selected':''}>${label}</option>`).join('')}</select></label><div class="expression-gallery">${expressionChoices.map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-expression="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div></div>`,
@@ -214,14 +220,15 @@ function customizationPanel() {
 
 function composeMoodScreen() {
   return `<section class="screen app-screen compose-screen">${appHeader('Composer',true)}
-    <div class="screen-title"><p class="kicker">Ton geste, ton rythme</p><h1>Compose ton humeur</h1><p>Personnalise-la, puis dessine librement dans l’espace pour préciser ce que tu ressens.</p></div>
+    <div class="screen-title"><p class="kicker">Ton geste, ton ressenti</p><h1>Illustre ton ressenti actuel</h1><p>Personnalise-le, puis modèle ou dessine librement ce que tu ressens.</p></div>
+    <label class="direct-emotion-name"><span>Nom de mon émotion</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne">${icon('edit',17)}</label>
     <div class="composer-helpers"><button class="library-trigger" data-panel="library">${icon('library',18)}<span><strong>Besoin d’un point de départ&nbsp;?</strong><small>Bibliothèque d’émotions</small></span>${icon('arrowRight',16)}</button><button class="emotion-sound-button ${state.soundEnabled?'active':''}" data-panel="sound">${icon(state.soundEnabled?'volume':'volumeOff',18)}<span>Son<small>${state.customAudioName||state.appearance.sound}</small></span></button></div>${customizationPanel()}
-    <div class="creation-toolbar" aria-label="Personnaliser l’émotion"><button class="${state.customPanel==='color'?'active':''}" data-panel="color">${icon('palette')}<span>Couleur</span></button><button class="${state.customPanel==='shape'?'active':''}" data-panel="shape">${icon('waves')}<span>Forme</span></button><button class="${state.customPanel==='texture'?'active':''}" data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button class="${state.customPanel==='expression'?'active':''}" data-panel="expression">${icon('heart')}<span>Visage</span></button><button class="${state.customPanel==='name'?'active':''}" data-panel="name">${icon('edit')}<span>Nom</span></button></div>
+    <div class="creation-toolbar four-tools" aria-label="Personnaliser l’émotion"><button class="${state.customPanel==='color'?'active':''}" data-panel="color">${icon('palette')}<span>Couleur</span></button><button class="${state.customPanel==='shape'?'active':''}" data-panel="shape">${icon('waves')}<span>Forme</span></button><button class="${state.customPanel==='texture'?'active':''}" data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button class="${state.customPanel==='expression'?'active':''}" data-panel="expression">${icon('heart')}<span>Visage</span></button></div>
     <div class="creation-mode" role="radiogroup" aria-label="Mode de création"><button class="${state.creationMode==='model'?'active':''}" data-mode="model" aria-pressed="${state.creationMode==='model'}">${icon('waves',17)}<span><strong>Modeler la forme</strong><small>Étire et déforme la forme choisie</small></span></button><button class="${state.creationMode==='free'?'active':''}" data-mode="free" aria-pressed="${state.creationMode==='free'}">${icon('edit',17)}<span><strong>Dessin libre</strong><small>Trace une forme avec ton geste</small></span></button></div>
     ${state.creationMode==='free'?`<div class="brush-studio"><div class="brush-row" role="toolbar" aria-label="Outils de dessin">${[['pencil','Crayon'],['marker','Feutre'],['watercolor','Pinceau'],['chalk','Craie']].map(([brush,label])=>`<button class="${state.brush===brush&&!state.eraser?'active':''}" data-brush="${brush}"><i class="brush-icon ${brush}"></i><span>${label}</span></button>`).join('')}<button class="eraser-tool ${state.eraser?'active':''}" data-action="toggle-eraser">${icon('rotate',16)}<span>Gomme</span></button></div><label class="brush-size"><span>Fin</span><input type="range" min="8" max="64" value="${state.brushSize}" data-brush-size aria-label="Taille du pinceau"><output>${state.brushSize}</output><span>Large</span></label></div>`:''}
     <div class="canvas-instruction">${state.creationMode==='model'?'<strong>Touche puis déplace</strong><span>Horizontalement pour l’étirer · verticalement pour l’affiner</span>':'<strong>Dessine en maintenant le doigt</strong><span>Ton tracé devient directement ta forme</span>'}</div>
     <div class="mood-canvas mode-${state.creationMode}" id="mood-canvas" tabindex="0" aria-label="${state.creationMode==='model'?'Fais glisser pour modeler la forme':'Dessine librement ta forme'}">${state.creationMode==='model'?`<div class="model-transform" style="--model-x:${state.model.scaleX};--model-y:${state.model.scaleY};--model-r:${state.model.rotate}deg">${tempoBlob('canvas-blob')}</div>`:`${drawingSvg('composer',true)}<b class="free-face blob-expression expression-${state.appearance.expression}"><u></u><u></u><em></em></b>`}<div class="sound-wave ${state.soundEnabled?'active':''}"><i></i><i></i><i></i><i></i></div>${state.creationMode==='free'&&!state.strokes.length?'<p><strong>Commence ton dessin ici</strong><br><span>Tu peux recommencer autant de fois que tu veux</span></p>':''}</div>
-    <div class="canvas-actions"><button data-action="reset-canvas">${icon('rotate',16)}Réinitialiser la forme</button><button class="${state.soundEnabled?'active':''}" data-action="toggle-sound">${icon(state.soundEnabled?'volume':'volumeOff',16)}${state.soundEnabled?'Arrêter le son':'Écouter cette émotion'}</button></div>
+    <div class="canvas-actions"><div class="history-tools"><button data-action="undo-stroke" aria-label="Annuler le dernier trait" ${!state.strokes.length?'disabled':''}>${icon('arrowLeft',16)}<span>Annuler</span></button><button data-action="redo-stroke" aria-label="Rétablir le trait" ${!state.redoStrokes.length?'disabled':''}>${icon('arrowRight',16)}<span>Rétablir</span></button></div><button data-action="reset-canvas">${icon('rotate',16)}Effacer</button><button class="${state.soundEnabled?'active':''}" data-action="toggle-sound">${icon(state.soundEnabled?'volume':'volumeOff',16)}${state.soundEnabled?'Arrêter':'Écouter'}</button></div>
     <div class="bottom-actions flow">${primaryButton(`Révéler « ${escapeHTML(state.profile.name)} »`,'reveal')}<button class="secondary-button" data-action="reset-mood">Recommencer</button></div></section>`
 }
 
@@ -282,6 +289,7 @@ function render(shouldScroll=true) {
 }
 
 app.addEventListener('click', event => {
+  const screenBeforeClick=state.screen
   const emotionButton = event.target.closest('[data-emotion]')
   const intensityButton = event.target.closest('[data-intensity]')
   const favorite = event.target.closest('[data-favorite]')
@@ -333,7 +341,7 @@ app.addEventListener('click', event => {
     if (action === 'confirm') state.confirmed ? state.screen = 4 : state.confirmed = true
     if (action === 'reveal') state.screen=6
     if (action === 'recommendations') { state.screen=7; state.activeTab='explore' }
-    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.brush='pencil';state.brushSize=24;state.eraser=false;saveAppearance() }
+    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.redoStrokes=[];state.brush='pencil';state.brushSize=24;state.eraser=false;saveAppearance() }
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
     if (action === 'go-home') { state.screen=4; state.activeTab='home'; state.bookingConfirmed=false }
@@ -341,17 +349,19 @@ app.addEventListener('click', event => {
     if (action === 'close-panel') state.customPanel=null
     if (action === 'toggle-dark') { state.darkMode=!state.darkMode; localStorage.setItem('tempo-dark-mode',state.darkMode) }
     if (action === 'toggle-sound') state.soundEnabled ? stopEmotionSound() : startEmotionSound()
-    if (action === 'reset-canvas') { state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[] }
+    if (action === 'reset-canvas') { state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.redoStrokes=[] }
+    if (action === 'undo-stroke'&&state.strokes.length) state.redoStrokes.push(state.strokes.pop())
+    if (action === 'redo-stroke'&&state.redoStrokes.length) state.strokes.push(state.redoStrokes.pop())
     if (action === 'toggle-eraser') state.eraser=!state.eraser
   }
-  render()
+  render(state.screen!==screenBeforeClick)
 })
 
 app.addEventListener('change', event => {
   if(event.target.matches('[data-reminder]')) state.reminder=event.target.value
-  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo'; saveAppearance(); render() }
-  if(event.target.matches('[data-expression-select]')) { state.appearance.expression=event.target.value;state.appearance.sound=expressionSounds[state.appearance.expression]||'mystery';if(state.soundEnabled)startEmotionSound();saveAppearance();render() }
-  if(event.target.matches('[data-audio-file]')&&event.target.files?.[0]) { stopEmotionSound();if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=URL.createObjectURL(event.target.files[0]);state.customAudioName=event.target.files[0].name;state.musicProvider=null;state.appearance.sound='custom';startEmotionSound();render() }
+  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo'; saveAppearance(); render(false) }
+  if(event.target.matches('[data-expression-select]')) { state.appearance.expression=event.target.value;state.appearance.sound=expressionSounds[state.appearance.expression]||'mystery';if(state.soundEnabled)startEmotionSound();saveAppearance();render(false) }
+  if(event.target.matches('[data-audio-file]')&&event.target.files?.[0]) { stopEmotionSound();if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=URL.createObjectURL(event.target.files[0]);state.customAudioName=event.target.files[0].name;state.musicProvider=null;state.appearance.sound='custom';startEmotionSound();render(false) }
 })
 app.addEventListener('input', event => {
   if(event.target.matches('[data-brush-size]')) { state.brushSize=Number(event.target.value);const output=event.target.parentElement?.querySelector('output');if(output)output.value=state.brushSize }
@@ -375,13 +385,13 @@ app.addEventListener('pointermove', event => {
     const model=canvas.querySelector('.model-transform');if(model){model.style.setProperty('--model-x',state.model.scaleX);model.style.setProperty('--model-y',state.model.scaleY);model.style.setProperty('--model-r',`${state.model.rotate}deg`)}
   } else {
     const x=(event.clientX-gestureStart.rect.left)/gestureStart.rect.width*350,y=(event.clientY-gestureStart.rect.top)/gestureStart.rect.height*390
-    if(Math.hypot(event.clientX-gestureStart.lastX,event.clientY-gestureStart.lastY)>3){gestureStart.points.push([x,y]);gestureStart.stroke.d=`M ${gestureStart.points.map(point=>`${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(' L ')}`;const path=canvas.querySelector(gestureStart.stroke.eraser?'[data-live-eraser]':'[data-live-stroke]');if(path)path.setAttribute('d',gestureStart.stroke.d)}
+    if(Math.hypot(event.clientX-gestureStart.lastX,event.clientY-gestureStart.lastY)>2){gestureStart.points.push([x,y]);gestureStart.stroke.d=smoothPath(gestureStart.points);const path=canvas.querySelector(gestureStart.stroke.eraser?'[data-live-eraser]':'[data-live-stroke]');if(path)path.setAttribute('d',gestureStart.stroke.d)}
   }
   gestureStart.lastX=event.clientX;gestureStart.lastY=event.clientY
 })
 app.addEventListener('pointerup', () => {
   if(!gestureStart)return
-  if(gestureStart.mode==='free'&&gestureStart.points.length>1)state.strokes.push(gestureStart.stroke)
+  if(gestureStart.mode==='free'&&gestureStart.points.length>1){state.strokes.push(gestureStart.stroke);state.redoStrokes=[]}
   gestureStart=null;render(false)
 })
 
