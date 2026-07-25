@@ -19,6 +19,9 @@ Toutes les données sont fictives et locales. Aucun framework, service externe, 
 - onboarding émotionnel en trois étapes ;
 - accueil et recommandations de proximité ;
 - composition gestuelle d’un profil Tempo ;
+- personnalisation de la couleur, de la forme, de la matière, de l’expression et du nom ;
+- bibliothèque locale de profils émotionnels ;
+- design sonore génératif activable et mode sombre mémorisé ;
 - profil émotionnel et recommandations filtrables ;
 - détail d’événement, favoris locaux et action finale ;
 - navigation mobile persistante et états vides.

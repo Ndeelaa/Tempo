@@ -33,8 +33,11 @@ const culturalEvents = [
 let storedFavorites = []
 try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[]') } catch (_) { storedFavorites = [] }
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
-const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true }
+let savedAppearance = {}
+try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
+const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne', energy:34, connection:42, discovery:84 }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:localStorage.getItem('tempo-sound')==='true', customPanel:null, appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious' } }
 const app = document.querySelector('#app')
+const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
 
 const icon = (name, size = 20) => {
   const paths = {
@@ -59,6 +62,13 @@ const icon = (name, size = 20) => {
     plus: '<path d="M12 5v14M5 12h14"/>',
     rotate: '<path d="M20 7h-6V1"/><path d="M20 7a9 9 0 1 0 1 7"/>',
     route: '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h3a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3"/>',
+    moon: '<path d="M21 12.7A9 9 0 1 1 11.3 3 7 7 0 0 0 21 12.7z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    volume: '<path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/>',
+    volumeOff: '<path d="M11 5 6 9H3v6h3l5 4V5zM22 9l-6 6M16 9l6 6"/>',
+    palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="10" r="1"/><path d="M15 17c-2 0-2-3 0-3h2c3 0 4-2 4-4"/>',
+    library: '<path d="M4 5h5v14H4zM10 5h5v14h-5zM17 4l3 14"/>',
+    edit: '<path d="M12 20h9M16.5 3.5a2 2 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5z"/>',
   }
   return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.sparkles}</svg>`
 }
@@ -117,9 +127,26 @@ function screenThree() {
   </section>`
 }
 
-const tempoBlob = (className='') => `<div class="tempo-blob ${className}" aria-label="Profil Tempo Curiosité nocturne"><i></i><i></i><span></span></div>`
+const tempoBlob = (className='') => `<div class="tempo-blob color-${state.appearance.color} shape-${state.appearance.shape} texture-${state.appearance.texture} ${className}" aria-label="Émotion ${escapeHTML(state.profile.name)}"><i></i><i></i><span></span><b class="blob-expression expression-${state.appearance.expression}"><u></u><u></u><em></em></b></div>`
 const favoriteButton = id => `<button class="favorite-button ${state.favorites.includes(id) ? 'active' : ''}" data-favorite="${id}" aria-label="${state.favorites.includes(id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}" aria-pressed="${state.favorites.includes(id)}">${icon('heart',18)}</button>`
-const appHeader = (title='', back=false) => `<header class="app-header">${back ? backButton() : '<span class="logo">tempo<span>.</span></span>'}<div>${title ? `<strong>${title}</strong>` : ''}</div><button class="icon-button" aria-label="Notifications">${icon('bell')}</button></header>`
+const appHeader = (title='', back=false) => `<header class="app-header">${back ? backButton() : '<span class="logo">tempo<span>.</span></span>'}<div>${title ? `<strong>${title}</strong>` : ''}</div><div class="header-actions"><button class="icon-button" data-action="toggle-sound" aria-label="${state.soundEnabled?'Désactiver':'Activer'} le son" aria-pressed="${state.soundEnabled}">${icon(state.soundEnabled?'volume':'volumeOff',18)}</button><button class="icon-button" data-action="toggle-dark" aria-label="${state.darkMode?'Désactiver':'Activer'} le mode sombre" aria-pressed="${state.darkMode}">${icon(state.darkMode?'sun':'moon',18)}</button></div></header>`
+
+let audioContext=null
+function playTone(type='tap') {
+  if(!state.soundEnabled) return
+  try {
+    audioContext ||= new (window.AudioContext||window.webkitAudioContext)()
+    const oscillator=audioContext.createOscillator(),gain=audioContext.createGain()
+    const notes={tap:280,change:390,reveal:220,success:520,gesture:180}
+    oscillator.type=type==='gesture'?'sine':'triangle';oscillator.frequency.value=notes[type]||280
+    gain.gain.setValueAtTime(.0001,audioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.055,audioContext.currentTime+.015);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+.22)
+    oscillator.connect(gain).connect(audioContext.destination);oscillator.start();oscillator.stop(audioContext.currentTime+.24)
+  } catch (_) {}
+}
+
+function saveAppearance(){
+  localStorage.setItem('tempo-appearance',JSON.stringify({...state.appearance,name:state.profile.name}))
+}
 const bottomNavigation = () => `<nav class="bottom-nav" aria-label="Navigation principale">${[
   ['home','Accueil','home',4],['explore','Explorer','search',7],['favorites','Favoris','heart',10],['profile','Profil','user',11]
 ].map(([tab,label,ico,target]) => `<button class="${state.activeTab === tab ? 'active' : ''}" data-tab="${tab}" data-screen="${target}" aria-current="${state.activeTab === tab ? 'page' : 'false'}">${icon(ico,19)}<span>${label}</span></button>`).join('')}</nav>`
@@ -132,7 +159,7 @@ function homeScreen() {
   return `<section class="screen app-screen home-screen">${appHeader()}<div class="home-greeting"><div><p>Bonjour Alex</p><h1>Quel est ton rythme aujourd’hui&nbsp;?</h1><span>Laisse ton humeur choisir ta prochaine expérience.</span></div><div class="avatar">A</div></div>
     <article class="my-tempo-card"><div class="tempo-orbit">${tempoBlob('home-blob')}</div><div class="tempo-card-copy"><p class="kicker">Mon Tempo</p><h2>Compose ton humeur</h2><p>Quelques gestes suffisent pour trouver une sortie qui te ressemble aujourd’hui.</p><button class="light-button" data-screen="5">Commencer ${icon('arrowRight',16)}</button></div></article>
     <section class="home-section"><div class="list-heading"><h2>Près de toi ce soir</h2><button data-screen="7">Tout voir</button></div><div class="mini-events">${[culturalEvents[1],culturalEvents[4],culturalEvents[5]].map(miniEventCard).join('')}</div></section>
-    <section class="last-tempo"><div class="last-mini-blob">${tempoBlob()}</div><div><p class="kicker">Ton dernier Tempo · Hier</p><h3>Curiosité nocturne</h3><button data-screen="7">Revoir mes recommandations ${icon('arrowRight',14)}</button></div></section>${bottomNavigation()}</section>`
+    <section class="last-tempo"><div class="last-mini-blob">${tempoBlob()}</div><div><p class="kicker">Ton dernier Tempo · Aujourd’hui</p><h3>${escapeHTML(state.profile.name)}</h3><button data-screen="7">Revoir mes recommandations ${icon('arrowRight',14)}</button></div></section>${bottomNavigation()}</section>`
 }
 
 function indicators() {
@@ -140,15 +167,40 @@ function indicators() {
   return `<div class="mood-indicators">${dims.map(([label,value]) => `<div><span>${label}</span><i><b style="width:${value}%"></b></i><small>${value}%</small></div>`).join('')}</div>`
 }
 
+const emotionLibrary=[
+  {name:'Curiosité nocturne',color:'night',shape:'organic',texture:'grain',expression:'curious'},
+  {name:'Énergie solaire',color:'sun',shape:'burst',texture:'smooth',expression:'happy'},
+  {name:'Évasion calme',color:'sage',shape:'round',texture:'cloud',expression:'serene'},
+  {name:'Élan collectif',color:'coral',shape:'wide',texture:'grain',expression:'happy'},
+  {name:'Vibration douce',color:'lavender',shape:'soft',texture:'smooth',expression:'dreamy'},
+]
+
+function customizationPanel() {
+  const panel=state.customPanel
+  if(!panel) return ''
+  if(panel==='library') return `<section class="custom-panel library-panel"><div class="panel-heading"><div><p class="kicker">Besoin d’inspiration&nbsp;?</p><h2>Bibliothèque d’émotions</h2></div><button data-action="close-panel" aria-label="Fermer">×</button></div><div class="emotion-library">${emotionLibrary.map((item,index)=>`<button data-library="${index}"><span class="library-blob color-${item.color} shape-${item.shape} texture-${item.texture}"></span><strong>${item.name}</strong><small>Utiliser comme point de départ</small></button>`).join('')}</div></section>`
+  const content={
+    color:`<div class="choice-grid colors">${[['night','Nuit'],['sun','Solaire'],['sage','Sauge'],['coral','Corail'],['lavender','Lavande']].map(([value,label])=>`<button class="${state.appearance.color===value?'active':''}" data-appearance="color" data-value="${value}"><i class="color-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
+    shape:`<div class="choice-grid shapes">${[['organic','Organique'],['round','Ronde'],['wide','Étendue'],['burst','Vibrante'],['soft','Douce']].map(([value,label])=>`<button class="${state.appearance.shape===value?'active':''}" data-appearance="shape" data-value="${value}"><i class="shape-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
+    texture:`<div class="choice-grid textures">${[['smooth','Lisse'],['grain','Granuleux'],['cloud','Nébuleux']].map(([value,label])=>`<button class="${state.appearance.texture===value?'active':''}" data-appearance="texture" data-value="${value}"><i class="texture-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
+    expression:`<div class="choice-grid expressions">${[['serene','Sereine'],['happy','Lumineuse'],['curious','Curieuse'],['neutral','Neutre'],['dreamy','Rêveuse']].map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-appearance="expression" data-value="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div>`,
+    name:`<label class="emotion-name"><span>Comment s’appelle cette émotion&nbsp;?</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne"><small>Tu pourras toujours la renommer plus tard.</small></label>`,
+  }
+  const titles={color:'Choisis sa couleur',shape:'Dessine sa forme',texture:'Ajoute une matière',expression:'Donne-lui une expression',name:'Nomme ton émotion'}
+  return `<section class="custom-panel"><div class="panel-heading"><h2>${titles[panel]}</h2><button data-action="close-panel" aria-label="Fermer">×</button></div>${content[panel]}</section>`
+}
+
 function composeMoodScreen() {
   return `<section class="screen app-screen compose-screen">${appHeader('Composer',true)}<div class="screen-title"><p class="kicker">Ton geste, ton rythme</p><h1>Compose ton humeur</h1><p>Il n’y a pas de bonne réponse. Laisse simplement ton geste suivre ton état du moment.</p></div>
-    <div class="mood-canvas" id="mood-canvas" tabindex="0" aria-label="Zone interactive de composition de l’humeur"><div class="canvas-haze"></div>${Array.from({length:16},(_,i)=>`<i class="particle p-${i}" style="--i:${i}"></i>`).join('')}${tempoBlob('canvas-blob')}<p>Glisse ton doigt<br><span>lentement ou rapidement</span></p></div>
+    <div class="mood-canvas" id="mood-canvas" tabindex="0" aria-label="Zone interactive de composition de l’humeur"><div class="canvas-haze"></div>${Array.from({length:16},(_,i)=>`<i class="particle p-${i}" style="--i:${i}"></i>`).join('')}${tempoBlob('canvas-blob')}<div class="sound-wave ${state.soundEnabled?'active':''}"><i></i><i></i><i></i><i></i></div><p>Glisse ton doigt<br><span>lentement ou rapidement</span></p></div>
     ${indicators()}<div class="demo-controls"><button data-mood="calm">Plus calme</button><button data-mood="social">Plus social</button><button data-mood="curious">Plus curieux</button></div>
-    <div class="bottom-actions flow">${primaryButton('Révéler mon Tempo','reveal')}<button class="secondary-button" data-action="reset-mood">Recommencer</button></div></section>`
+    <div class="creation-toolbar" aria-label="Personnaliser l’émotion"><button data-panel="color">${icon('palette')}<span>Couleur</span></button><button data-panel="shape">${icon('waves')}<span>Forme</span></button><button data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button data-panel="expression">${icon('heart')}<span>Expression</span></button><button data-panel="name">${icon('edit')}<span>Nom</span></button></div>
+    <button class="library-trigger" data-panel="library">${icon('library',18)}<span><strong>Bibliothèque d’émotions</strong><small>Choisir un point de départ</small></span>${icon('arrowRight',16)}</button>${customizationPanel()}
+    <div class="bottom-actions flow">${primaryButton(`Révéler « ${escapeHTML(state.profile.name)} »`,'reveal')}<button class="secondary-button" data-action="reset-mood">Recommencer</button></div></section>`
 }
 
 function profileScreen() {
-  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${tempoBlob('profile-blob')}<p class="kicker">Profil généré aujourd’hui</p><h1>${state.profile.name}</h1><p>Tu sembles rechercher une expérience calme, immersive et légèrement inattendue.</p></div>
+  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${tempoBlob('profile-blob')}<p class="kicker">Profil généré aujourd’hui</p><h1>${escapeHTML(state.profile.name)}</h1><p>Tu sembles rechercher une expérience calme, immersive et légèrement inattendue.</p></div>
     <div class="dimension-cards"><article>${icon('waves')}<span>Énergie</span><strong>Douce</strong></article><article>${icon('heart')}<span>Connexion</span><strong>Intime</strong></article><article>${icon('compass')}<span>Découverte</span><strong>Élevée</strong></article></div>
     <article class="tempo-understood"><span>${icon('sparkles')}</span><div><h2>Ce que Tempo a compris</h2><p>Ton geste était lent et ample, avec quelques variations imprévisibles. Tempo privilégie donc des expériences calmes qui laissent une place à la surprise.</p></div></article><p class="privacy-note">${icon('check',14)} Ce profil sert uniquement à personnaliser tes recommandations culturelles.</p>
     <div class="bottom-actions flow">${primaryButton('Voir mes recommandations','recommendations')}<button class="secondary-button" data-screen="5">Recomposer mon humeur</button></div></section>`
@@ -170,7 +222,7 @@ function errorState() {
 function recommendationsScreen() {
   const filters=['Tous','Aujourd’hui','Gratuit','À moins de 3 km','Calme','Insolite']
   let shown = culturalEvents.slice(0,4).filter(event => state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite'))
-  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">Curiosité nocturne · Paris · Ce soir</p><h1>Des expériences qui suivent ton rythme</h1></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>Curiosité nocturne</strong><span>Douce · Intime · Découverte élevée</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
+  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui suivent ton rythme</h1></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>Douce · Intime · Découverte élevée</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
 }
 
 function eventDetailScreen() {
@@ -181,7 +233,7 @@ function eventDetailScreen() {
 function bookingScreen() {
   const event = culturalEvents.find(item=>item.id===state.selectedEvent) || culturalEvents[0]
   if(state.bookingConfirmed) return confirmationScreen(event)
-  return `<section class="screen app-screen booking-screen">${appHeader('Finaliser',true)}<div class="screen-title"><p class="kicker">Dernière étape</p><h1>Ta sortie est presque prête</h1></div><article class="booking-summary"><div class="summary-visual ${event.visual}"></div><div><p>${event.category}</p><h2>${event.title}</h2><span>${event.venue}</span><strong>${event.date} · ${event.price}</strong></div><span class="summary-tempo">${tempoBlob()}Curiosité nocturne</span></article><div class="action-choices">${['Réserver','Sauvegarder','Partager'].map(choice=>`<button class="${state.bookingAction===choice?'active':''}" data-booking-action="${choice}" aria-pressed="${state.bookingAction===choice}">${icon(choice==='Réserver'?'ticket':choice==='Sauvegarder'?'bookmark':'share')}<span>${choice}</span></button>`).join('')}</div><div class="booking-form"><label><span>Nombre de places</span><div class="stepper"><button data-place="minus" aria-label="Retirer une place">−</button><b>${state.places}</b><button data-place="plus" aria-label="Ajouter une place">+</button></div></label><label><span>Rappel avant l’événement</span><select data-reminder><option>1 heure avant</option><option>2 heures avant</option><option>La veille</option></select></label><label><span>Ajouter au calendrier</span><button class="switch ${state.calendar?'active':''}" data-action="toggle-calendar" role="switch" aria-checked="${state.calendar}"><i></i></button></label></div><p class="partner-note">${icon('route',15)} La réservation sera finalisée sur le site du partenaire.</p><div class="bottom-actions">${primaryButton('Continuer vers le partenaire','finish-booking')}</div></section>`
+  return `<section class="screen app-screen booking-screen">${appHeader('Finaliser',true)}<div class="screen-title"><p class="kicker">Dernière étape</p><h1>Ta sortie est presque prête</h1></div><article class="booking-summary"><div class="summary-visual ${event.visual}"></div><div><p>${event.category}</p><h2>${event.title}</h2><span>${event.venue}</span><strong>${event.date} · ${event.price}</strong></div><span class="summary-tempo">${tempoBlob()}${escapeHTML(state.profile.name)}</span></article><div class="action-choices">${['Réserver','Sauvegarder','Partager'].map(choice=>`<button class="${state.bookingAction===choice?'active':''}" data-booking-action="${choice}" aria-pressed="${state.bookingAction===choice}">${icon(choice==='Réserver'?'ticket':choice==='Sauvegarder'?'bookmark':'share')}<span>${choice}</span></button>`).join('')}</div><div class="booking-form"><label><span>Nombre de places</span><div class="stepper"><button data-place="minus" aria-label="Retirer une place">−</button><b>${state.places}</b><button data-place="plus" aria-label="Ajouter une place">+</button></div></label><label><span>Rappel avant l’événement</span><select data-reminder><option>1 heure avant</option><option>2 heures avant</option><option>La veille</option></select></label><label><span>Ajouter au calendrier</span><button class="switch ${state.calendar?'active':''}" data-action="toggle-calendar" role="switch" aria-checked="${state.calendar}"><i></i></button></label></div><p class="partner-note">${icon('route',15)} La réservation sera finalisée sur le site du partenaire.</p><div class="bottom-actions">${primaryButton('Continuer vers le partenaire','finish-booking')}</div></section>`
 }
 
 function confirmationScreen(event) {
@@ -198,7 +250,7 @@ function placeholderScreen() {
 }
 
 function render() {
-  app.className = `app-shell screen-${state.screen}`
+  app.className = `app-shell screen-${state.screen} ${state.darkMode?'dark':''}`
   const screens={1:screenOne,2:screenTwo,3:screenThree,4:homeScreen,5:composeMoodScreen,6:profileScreen,7:recommendationsScreen,8:eventDetailScreen,9:bookingScreen,10:favoritesScreen,11:placeholderScreen}
   app.innerHTML = `<div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>${(screens[state.screen] || homeScreen)()}`
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
@@ -215,6 +267,9 @@ app.addEventListener('click', event => {
   const bookingAction = event.target.closest('[data-booking-action]')
   const feeling = event.target.closest('[data-feeling]')
   const place = event.target.closest('[data-place]')
+  const panel = event.target.closest('[data-panel]')
+  const appearance = event.target.closest('[data-appearance]')
+  const library = event.target.closest('[data-library]')
   const actionButton = event.target.closest('[data-action]')
   if (emotionButton) state.emotion = emotionButton.dataset.emotion
   else if (intensityButton) state.intensity = Number(intensityButton.dataset.intensity)
@@ -235,6 +290,9 @@ app.addEventListener('click', event => {
   else if (bookingAction) state.bookingAction=bookingAction.dataset.bookingAction
   else if (feeling) { state.desiredFeeling=feeling.dataset.feeling; localStorage.setItem('tempo-desired-feeling',state.desiredFeeling) }
   else if (place) state.places=Math.max(1,Math.min(6,state.places+(place.dataset.place==='plus'?1:-1)))
+  else if (panel) { state.customPanel=state.customPanel===panel.dataset.panel?null:panel.dataset.panel; playTone('tap') }
+  else if (appearance) { state.appearance[appearance.dataset.appearance]=appearance.dataset.value; saveAppearance(); playTone('change') }
+  else if (library) { const preset=emotionLibrary[Number(library.dataset.library)]; state.profile.name=preset.name; state.appearance={color:preset.color,shape:preset.shape,texture:preset.texture,expression:preset.expression}; state.customPanel=null; saveAppearance(); playTone('reveal') }
   else if (actionButton) {
     const action = actionButton.dataset.action
     if (action === 'next' || action === 'skip') state.screen++
@@ -246,17 +304,22 @@ app.addEventListener('click', event => {
     if (action === 'confirm') state.confirmed ? state.screen = 4 : state.confirmed = true
     if (action === 'reveal') state.screen=6
     if (action === 'recommendations') { state.screen=7; state.activeTab='explore' }
-    if (action === 'reset-mood') state.profile={ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }
+    if (action === 'reset-mood') { state.profile={ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious'}; saveAppearance() }
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
     if (action === 'go-home') { state.screen=4; state.activeTab='home'; state.bookingConfirmed=false }
     if (action === 'replay-onboarding') { state.screen=1; state.confirmed=false; localStorage.removeItem('tempo-onboarding-done') }
+    if (action === 'close-panel') state.customPanel=null
+    if (action === 'toggle-dark') { state.darkMode=!state.darkMode; localStorage.setItem('tempo-dark-mode',state.darkMode); playTone('change') }
+    if (action === 'toggle-sound') { state.soundEnabled=!state.soundEnabled; localStorage.setItem('tempo-sound',state.soundEnabled); playTone('success') }
   }
+  if(actionButton && !['toggle-sound','toggle-dark'].includes(actionButton.dataset.action)) playTone(actionButton.dataset.action==='reveal'?'reveal':'tap')
   render()
 })
 
 app.addEventListener('change', event => {
   if(event.target.matches('[data-reminder]')) state.reminder=event.target.value
+  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo'; saveAppearance(); render() }
 })
 
 let gestureStart=null
@@ -280,6 +343,7 @@ app.addEventListener('pointerup', () => {
   state.profile.energy=Math.round(Math.min(100,Math.max(10,speed*75)))
   state.profile.connection=Math.round(Math.min(100,Math.max(15,amplitude/2.4)))
   state.profile.discovery=Math.round(Math.min(100,45+gestureStart.moves*2.5))
+  playTone('gesture')
   gestureStart=null;render()
 })
 
