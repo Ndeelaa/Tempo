@@ -21,7 +21,7 @@ Toutes les données sont fictives et locales. Aucun framework, service externe, 
 - composition gestuelle d’un profil Tempo ;
 - personnalisation de la couleur, de la forme, de la matière, de l’expression et du nom ;
 - bibliothèque locale de profils émotionnels ;
-- design sonore génératif activable et mode sombre mémorisé ;
+- paysages sonores propres à l’émotion (vagues, pluie, orage, carillons ou vent) et mode sombre bleu nuit ;
 - profil émotionnel et recommandations filtrables ;
 - détail d’événement, favoris locaux et action finale ;
 - navigation mobile persistante et états vides.
