@@ -35,7 +35,7 @@ try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
 let savedAppearance = {}
 try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
-const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne', energy:34, connection:42, discovery:84 }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
+const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, freePath:'', musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
 const app = document.querySelector('#app')
 const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
 
@@ -121,23 +121,30 @@ function screenThree() {
       <div class="story-line"><i></i>${icon('arrowRight',17)}</div>
       <div class="story-node outing-node"><div class="outing-art visual-water">${icon('sparkles')}</div><span>Ta sortie</span></div>
     </div>
-    <article class="onboarding-result"><span class="result-icon">${icon('check',18)}</span><div><p class="kicker">Une recommandation, expliquée</p><h2>Une sortie adaptée à ton énergie</h2><p>Tu vois pourquoi elle te correspond, avant même de choisir.</p></div></article>
+    <article class="onboarding-result"><span class="result-icon">${icon('check',18)}</span><div><p class="kicker">Une recommandation, expliquée</p><h2>Une sortie adaptée à ton ressenti</h2><p>Tu vois pourquoi elle te correspond, avant même de choisir.</p></div></article>
     <div class="onboarding-promise"><span>${icon('compass',18)}Culture</span><span>${icon('heart',18)}Émotion</span><span>${icon('sparkles',18)}Découverte</span></div>
     <div class="onboarding-actions">${primaryButton('Entrer dans Tempo','enter-app')}<button class="secondary-button" data-action="back">Revenir en arrière</button></div>
   </section>`
 }
 
 const tempoBlob = (className='') => `<div class="tempo-blob color-${state.appearance.color} shape-${state.appearance.shape} texture-${state.appearance.texture} pose-${state.appearance.expression} ${className}" aria-label="Émotion ${escapeHTML(state.profile.name)}"><i class="blob-light"></i><i class="blob-shadow"></i><span class="blob-glow"></span><b class="blob-expression expression-${state.appearance.expression}"><u></u><u></u><em></em></b><s class="limb arm-left"></s><s class="limb arm-right"></s><s class="limb leg-left"></s><s class="limb leg-right"></s></div>`
+const createdEmotion = (className='') => {
+  if(state.creationMode!=='free'||!state.freePath)return `<div class="created-emotion ${className}" style="--model-x:${state.model.scaleX};--model-y:${state.model.scaleY};--model-r:${state.model.rotate}deg">${tempoBlob()}</div>`
+  const colors=colorSets[state.appearance.color]||colorSets.night
+  return `<div class="created-emotion free-created ${className}"><svg viewBox="0 0 350 390" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="profile-gradient"><stop stop-color="${colors[0]}"/><stop offset=".5" stop-color="${colors[1]}"/><stop offset="1" stop-color="${colors[2]}"/></linearGradient></defs><path d="${state.freePath}" fill="none" stroke="url(#profile-gradient)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/></svg><b class="blob-expression expression-${state.appearance.expression}"><u></u><u></u><em></em></b></div>`
+}
 const favoriteButton = id => `<button class="favorite-button ${state.favorites.includes(id) ? 'active' : ''}" data-favorite="${id}" aria-label="${state.favorites.includes(id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}" aria-pressed="${state.favorites.includes(id)}">${icon('heart',18)}</button>`
 const appHeader = (title='', back=false) => `<header class="app-header">${back ? backButton() : '<span class="logo">tempo<span>.</span></span>'}<div>${title ? `<strong>${title}</strong>` : ''}</div><div class="header-actions"><button class="icon-button ${state.soundEnabled?'sound-on':''}" data-action="toggle-sound" aria-label="${state.soundEnabled?'Arrêter':'Écouter'} le son de cette émotion" aria-pressed="${state.soundEnabled}">${icon(state.soundEnabled?'volume':'volumeOff',18)}</button><button class="icon-button" data-action="toggle-dark" aria-label="${state.darkMode?'Désactiver':'Activer'} le mode sombre" aria-pressed="${state.darkMode}">${icon(state.darkMode?'sun':'moon',18)}</button></div></header>`
 
 let audioContext=null,audioNodes=[]
 function stopEmotionSound(){
-  audioNodes.forEach(node=>{try{node.stop?.();node.disconnect?.()}catch(_){}});audioNodes=[];state.soundEnabled=false
+  audioNodes.forEach(node=>{try{node.pause?.();node.stop?.();node.disconnect?.()}catch(_){}});audioNodes=[];state.soundEnabled=false
 }
 function startEmotionSound(){
   try {
-    stopEmotionSound();audioContext ||= new (window.AudioContext||window.webkitAudioContext)();audioContext.resume?.()
+    stopEmotionSound()
+    if(state.customAudioUrl){const player=new Audio(state.customAudioUrl);player.loop=true;player.volume=.38;player.play();audioNodes.push(player);state.soundEnabled=true;return}
+    audioContext ||= new (window.AudioContext||window.webkitAudioContext)();audioContext.resume?.()
     const master=audioContext.createGain();master.gain.value=.065;master.connect(audioContext.destination);audioNodes.push(master)
     const sound=state.appearance.sound||({serene:'waves',happy:'chimes',angry:'thunder',sad:'rain',worried:'wind',shy:'breeze',curious:'mystery',confused:'mystery'}[state.appearance.expression]||'mystery')
     const oscillator=(frequency,type='sine',volume=.22)=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=type;osc.frequency.value=frequency;gain.gain.value=volume;osc.connect(gain).connect(master);osc.start();audioNodes.push(osc,gain)}
@@ -170,11 +177,6 @@ function homeScreen() {
     <section class="last-tempo"><div class="last-mini-blob">${tempoBlob()}</div><div><p class="kicker">Ton dernier Tempo · Aujourd’hui</p><h3>${escapeHTML(state.profile.name)}</h3><button data-screen="7">Revoir mes recommandations ${icon('arrowRight',14)}</button></div></section>${bottomNavigation()}</section>`
 }
 
-function indicators() {
-  const dims = [['Énergie',state.profile.energy],['Connexion',state.profile.connection],['Découverte',state.profile.discovery]]
-  return `<div class="mood-indicators">${dims.map(([label,value]) => `<div><span>${label}</span><i><b style="width:${value}%"></b></i><small>${value}%</small></div>`).join('')}</div>`
-}
-
 const emotionLibrary=[
   {name:'Curiosité nocturne',color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'},
   {name:'Énergie solaire',color:'sun',shape:'burst',texture:'smooth',expression:'happy',sound:'chimes'},
@@ -183,6 +185,7 @@ const emotionLibrary=[
   {name:'Mélancolie douce',color:'night',shape:'droop',texture:'watercolor',expression:'sad',sound:'rain'},
   {name:'Timidité rose',color:'lavender',shape:'soft',texture:'watercolor',expression:'shy',sound:'breeze'},
 ]
+const colorSets={night:['#425D9C','#9C82DF','#E9B5CC'],sun:['#FFD85A','#FFA178','#FF8A67'],sage:['#A9C878','#748DD5','#C9A8F4'],coral:['#FF8A67','#E9B5CC','#9C82DF'],lavender:['#C9A8F4','#9C82DF','#748DD5']}
 
 function customizationPanel() {
   const panel=state.customPanel
@@ -194,26 +197,28 @@ function customizationPanel() {
     texture:`<div class="choice-grid textures">${[['smooth','Lisse'],['grain','Granuleux'],['cloud','Nébuleux'],['watercolor','Aquarelle']].map(([value,label])=>`<button class="${state.appearance.texture===value?'active':''}" data-appearance="texture" data-value="${value}"><i class="texture-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     expression:`<div class="choice-grid expressions scroll-choices">${[['serene','Calme'],['happy','Heureuse'],['curious','Curieuse'],['shy','Timide'],['angry','En colère'],['confused','Confuse'],['sad','Triste'],['worried','Inquiète']].map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-appearance="expression" data-value="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div>`,
     name:`<label class="emotion-name"><span>Comment s’appelle cette émotion&nbsp;?</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne"><small>Tu pourras toujours la renommer plus tard.</small></label>`,
+    sound:`<div class="sound-picker"><p>Choisis une ambiance créée par Tempo</p><div class="sound-presets">${[['waves','Vagues'],['rain','Pluie'],['thunder','Orage'],['chimes','Carillons'],['wind','Vent'],['mystery','Nuit']].map(([value,label])=>`<button class="${state.appearance.sound===value&&!state.customAudioUrl?'active':''}" data-sound="${value}">${icon('volume',16)}<span>${label}</span></button>`).join('')}</div><label class="audio-upload">${icon('plus',18)}<span><strong>Choisir mon propre son</strong><small>${state.customAudioName||'MP3, WAV ou M4A depuis cet appareil'}</small></span><input type="file" data-audio-file accept="audio/*"></label><div class="music-services"><p>Ou retrouver ta musique</p>${[['spotify','Spotify'],['apple','Apple Music'],['deezer','Deezer']].map(([provider,label])=>`<button data-provider="${provider}" class="${state.musicProvider===provider?'connected':''}"><i class="provider-${provider}"></i><span><strong>${label}</strong><small>${state.musicProvider===provider?'Connecté en mode démo':'Connecter (démo)'}</small></span></button>`).join('')}</div><small class="prototype-note">La connexion est simulée dans ce prototype. Une connexion réelle nécessitera l’autorisation sécurisée du service musical.</small></div>`,
   }
-  const titles={color:'Choisis sa couleur',shape:'Dessine sa forme',texture:'Ajoute une matière',expression:'Donne-lui une expression',name:'Nomme ton émotion'}
+  const titles={color:'Choisis sa couleur',shape:'Dessine sa forme',texture:'Ajoute une matière',expression:'Donne-lui une expression',name:'Nomme ton émotion',sound:'Associe-lui un son'}
   return `<section class="custom-panel"><div class="panel-heading"><h2>${titles[panel]}</h2><button data-action="close-panel" aria-label="Fermer">×</button></div>${content[panel]}</section>`
 }
 
 function composeMoodScreen() {
+  const drawingColors=colorSets[state.appearance.color]||colorSets.night
   return `<section class="screen app-screen compose-screen">${appHeader('Composer',true)}
-    <div class="composer-sticky"><div class="creation-toolbar" aria-label="Personnaliser l’émotion"><button class="${state.customPanel==='color'?'active':''}" data-panel="color">${icon('palette')}<span>Couleur</span></button><button class="${state.customPanel==='shape'?'active':''}" data-panel="shape">${icon('waves')}<span>Forme</span></button><button class="${state.customPanel==='texture'?'active':''}" data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button class="${state.customPanel==='expression'?'active':''}" data-panel="expression">${icon('heart')}<span>Visage</span></button><button class="${state.customPanel==='name'?'active':''}" data-panel="name">${icon('edit')}<span>Nom</span></button></div></div>${customizationPanel()}
     <div class="screen-title"><p class="kicker">Ton geste, ton rythme</p><h1>Compose ton humeur</h1><p>Personnalise-la, puis dessine librement dans l’espace pour préciser ce que tu ressens.</p></div>
-    <div class="composer-helpers"><button class="library-trigger" data-panel="library">${icon('library',18)}<span><strong>Tu ne sais pas par où commencer&nbsp;?</strong><small>Bibliothèque d’émotions</small></span>${icon('arrowRight',16)}</button><button class="emotion-sound-button ${state.soundEnabled?'active':''}" data-action="toggle-sound">${icon(state.soundEnabled?'volume':'volumeOff',18)}<span>${state.soundEnabled?'Arrêter':'Écouter'}<small>${escapeHTML(state.profile.name)}</small></span></button></div>
-    <div class="gesture-guide"><strong>Ton geste agit vraiment sur la forme</strong><div><span><i>1</i><b>Vitesse</b><small>mesure l’énergie</small></span><span><i>2</i><b>Amplitude</b><small>mesure la connexion</small></span><span><i>3</i><b>Variations</b><small>mesurent la découverte</small></span></div></div>
-    <div class="mood-canvas" id="mood-canvas" tabindex="0" aria-label="Dessine ton ressenti : la vitesse mesure l’énergie, l’amplitude la connexion et les variations la découverte"><div class="canvas-haze"></div>${Array.from({length:16},(_,i)=>`<i class="particle p-${i}" style="--i:${i}"></i>`).join('')}${tempoBlob('canvas-blob')}<div class="sound-wave ${state.soundEnabled?'active':''}"><i></i><i></i><i></i><i></i></div><div class="gesture-readout"><span>Énergie <b data-live="energy">${state.profile.energy}</b></span><span>Connexion <b data-live="connection">${state.profile.connection}</b></span><span>Découverte <b data-live="discovery">${state.profile.discovery}</b></span></div><p><strong>Dessine ton ressenti ici</strong><br><span>Observe la forme réagir en direct</span></p></div>
-    ${indicators()}<div class="demo-controls"><button data-mood="calm">Plus calme</button><button data-mood="social">Plus social</button><button data-mood="curious">Plus curieux</button></div>
+    <div class="composer-helpers"><button class="library-trigger" data-panel="library">${icon('library',18)}<span><strong>Besoin d’un point de départ&nbsp;?</strong><small>Bibliothèque d’émotions</small></span>${icon('arrowRight',16)}</button><button class="emotion-sound-button ${state.soundEnabled?'active':''}" data-panel="sound">${icon(state.soundEnabled?'volume':'volumeOff',18)}<span>Son<small>${state.customAudioName||state.appearance.sound}</small></span></button></div>${customizationPanel()}
+    <div class="creation-toolbar" aria-label="Personnaliser l’émotion"><button class="${state.customPanel==='color'?'active':''}" data-panel="color">${icon('palette')}<span>Couleur</span></button><button class="${state.customPanel==='shape'?'active':''}" data-panel="shape">${icon('waves')}<span>Forme</span></button><button class="${state.customPanel==='texture'?'active':''}" data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button class="${state.customPanel==='expression'?'active':''}" data-panel="expression">${icon('heart')}<span>Visage</span></button><button class="${state.customPanel==='name'?'active':''}" data-panel="name">${icon('edit')}<span>Nom</span></button></div>
+    <div class="creation-mode" role="radiogroup" aria-label="Mode de création"><button class="${state.creationMode==='model'?'active':''}" data-mode="model" aria-pressed="${state.creationMode==='model'}">${icon('waves',17)}<span><strong>Modeler la forme</strong><small>Étire et déforme la forme choisie</small></span></button><button class="${state.creationMode==='free'?'active':''}" data-mode="free" aria-pressed="${state.creationMode==='free'}">${icon('edit',17)}<span><strong>Dessin libre</strong><small>Trace une forme avec ton geste</small></span></button></div>
+    <div class="canvas-instruction">${state.creationMode==='model'?'<strong>Touche puis déplace</strong><span>Horizontalement pour l’étirer · verticalement pour l’affiner</span>':'<strong>Dessine en maintenant le doigt</strong><span>Ton tracé devient directement ta forme</span>'}</div>
+    <div class="mood-canvas mode-${state.creationMode}" id="mood-canvas" tabindex="0" aria-label="${state.creationMode==='model'?'Fais glisser pour modeler la forme':'Dessine librement ta forme'}"><div class="canvas-haze"></div>${Array.from({length:12},(_,i)=>`<i class="particle p-${i}" style="--i:${i}"></i>`).join('')}${state.creationMode==='model'?`<div class="model-transform" style="--model-x:${state.model.scaleX};--model-y:${state.model.scaleY};--model-r:${state.model.rotate}deg">${tempoBlob('canvas-blob')}</div>`:`<svg class="free-drawing texture-${state.appearance.texture}" viewBox="0 0 350 390" preserveAspectRatio="none"><defs><linearGradient id="free-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${drawingColors[0]}"/><stop offset=".45" stop-color="${drawingColors[1]}"/><stop offset="1" stop-color="${drawingColors[2]}"/></linearGradient><filter id="free-grain"><feTurbulence baseFrequency=".7" numOctaves="3" result="noise"/><feBlend in="SourceGraphic" in2="noise" mode="soft-light"/></filter></defs><path data-free-path d="${state.freePath}" fill="none" stroke="url(#free-gradient)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round" filter="${state.appearance.texture==='grain'?'url(#free-grain)':''}"/></svg><b class="free-face blob-expression expression-${state.appearance.expression}"><u></u><u></u><em></em></b>`}<div class="sound-wave ${state.soundEnabled?'active':''}"><i></i><i></i><i></i><i></i></div>${state.creationMode==='free'&&!state.freePath?'<p><strong>Commence ton dessin ici</strong><br><span>Tu peux recommencer autant de fois que tu veux</span></p>':''}</div>
+    <div class="canvas-actions"><button data-action="reset-canvas">${icon('rotate',16)}Réinitialiser la forme</button><button class="${state.soundEnabled?'active':''}" data-action="toggle-sound">${icon(state.soundEnabled?'volume':'volumeOff',16)}${state.soundEnabled?'Arrêter le son':'Écouter cette émotion'}</button></div>
     <div class="bottom-actions flow">${primaryButton(`Révéler « ${escapeHTML(state.profile.name)} »`,'reveal')}<button class="secondary-button" data-action="reset-mood">Recommencer</button></div></section>`
 }
 
 function profileScreen() {
-  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${tempoBlob('profile-blob')}<p class="kicker">Profil généré aujourd’hui</p><h1>${escapeHTML(state.profile.name)}</h1><p>Tu sembles rechercher une expérience calme, immersive et légèrement inattendue.</p></div>
-    <div class="dimension-cards"><article>${icon('waves')}<span>Énergie</span><strong>Douce</strong></article><article>${icon('heart')}<span>Connexion</span><strong>Intime</strong></article><article>${icon('compass')}<span>Découverte</span><strong>Élevée</strong></article></div>
-    <article class="tempo-understood"><span>${icon('sparkles')}</span><div><h2>Ce que Tempo a compris</h2><p>Ton geste était lent et ample, avec quelques variations imprévisibles. Tempo privilégie donc des expériences calmes qui laissent une place à la surprise.</p></div></article><p class="privacy-note">${icon('check',14)} Ce profil sert uniquement à personnaliser tes recommandations culturelles.</p>
+  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${createdEmotion('profile-created')}<p class="kicker">Création du jour</p><h1>${escapeHTML(state.profile.name)}</h1><p>Cette émotion unique réunit la forme, les couleurs, la matière et l’expression que tu as choisies.</p></div>
+    <article class="tempo-understood profile-summary"><span>${icon('sparkles')}</span><div><h2>Ton émotion a pris forme</h2><p>Tempo utilise l’univers visuel et sonore que tu as créé pour proposer des expériences culturelles qui lui ressemblent.</p></div></article><p class="privacy-note">${icon('check',14)} Cette création sert uniquement à personnaliser tes recommandations culturelles.</p>
     <div class="bottom-actions flow">${primaryButton('Voir mes recommandations','recommendations')}<button class="secondary-button" data-screen="5">Recomposer mon humeur</button></div></section>`
 }
 
@@ -233,7 +238,7 @@ function errorState() {
 function recommendationsScreen() {
   const filters=['Tous','Aujourd’hui','Gratuit','À moins de 3 km','Calme','Insolite']
   let shown = culturalEvents.slice(0,4).filter(event => state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite'))
-  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui suivent ton rythme</h1></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>Douce · Intime · Découverte élevée</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
+  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui suivent ton rythme</h1></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>Ta création émotionnelle du moment</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
 }
 
 function eventDetailScreen() {
@@ -274,13 +279,15 @@ app.addEventListener('click', event => {
   const eventCard = event.target.closest('[data-event]')
   const screenButton = event.target.closest('[data-screen]')
   const filter = event.target.closest('[data-filter]')
-  const mood = event.target.closest('[data-mood]')
   const bookingAction = event.target.closest('[data-booking-action]')
   const feeling = event.target.closest('[data-feeling]')
   const place = event.target.closest('[data-place]')
   const panel = event.target.closest('[data-panel]')
   const appearance = event.target.closest('[data-appearance]')
   const library = event.target.closest('[data-library]')
+  const mode = event.target.closest('[data-mode]')
+  const sound = event.target.closest('[data-sound]')
+  const provider = event.target.closest('[data-provider]')
   const actionButton = event.target.closest('[data-action]')
   if (emotionButton) state.emotion = emotionButton.dataset.emotion
   else if (intensityButton) state.intensity = Number(intensityButton.dataset.intensity)
@@ -293,17 +300,15 @@ app.addEventListener('click', event => {
   else if (eventCard) { state.selectedEvent=eventCard.dataset.event; state.screen=8 }
   else if (screenButton) { state.screen=Number(screenButton.dataset.screen); if(screenButton.dataset.tab)state.activeTab=screenButton.dataset.tab; if(state.screen===4)state.activeTab='home' }
   else if (filter) state.activeFilter=filter.dataset.filter
-  else if (mood) {
-    if(mood.dataset.mood==='calm') state.profile.energy=Math.max(10,state.profile.energy-12)
-    if(mood.dataset.mood==='social') state.profile.connection=Math.min(100,state.profile.connection+15)
-    if(mood.dataset.mood==='curious') state.profile.discovery=Math.min(100,state.profile.discovery+10)
-  }
   else if (bookingAction) state.bookingAction=bookingAction.dataset.bookingAction
   else if (feeling) { state.desiredFeeling=feeling.dataset.feeling; localStorage.setItem('tempo-desired-feeling',state.desiredFeeling) }
   else if (place) state.places=Math.max(1,Math.min(6,state.places+(place.dataset.place==='plus'?1:-1)))
   else if (panel) state.customPanel=state.customPanel===panel.dataset.panel?null:panel.dataset.panel
   else if (appearance) { const kind=appearance.dataset.appearance,value=appearance.dataset.value; state.appearance[kind]=value; if(kind==='expression')state.appearance.sound={serene:'waves',happy:'chimes',angry:'thunder',sad:'rain',worried:'wind',shy:'breeze',curious:'mystery',confused:'mystery'}[value]||'mystery'; if(state.soundEnabled)startEmotionSound(); saveAppearance() }
   else if (library) { const preset=emotionLibrary[Number(library.dataset.library)]; state.profile.name=preset.name; state.appearance={color:preset.color,shape:preset.shape,texture:preset.texture,expression:preset.expression,sound:preset.sound}; state.customPanel=null; if(state.soundEnabled)startEmotionSound(); saveAppearance() }
+  else if (mode) { state.creationMode=mode.dataset.mode; stopEmotionSound() }
+  else if (sound) { state.appearance.sound=sound.dataset.sound; if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=null;state.customAudioName='';state.musicProvider=null;saveAppearance();startEmotionSound() }
+  else if (provider) { stopEmotionSound();state.musicProvider=provider.dataset.provider;state.customAudioName='';state.customAudioUrl=null }
   else if (actionButton) {
     const action = actionButton.dataset.action
     if (action === 'next' || action === 'skip') state.screen++
@@ -315,7 +320,7 @@ app.addEventListener('click', event => {
     if (action === 'confirm') state.confirmed ? state.screen = 4 : state.confirmed = true
     if (action === 'reveal') state.screen=6
     if (action === 'recommendations') { state.screen=7; state.activeTab='explore' }
-    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne', energy:34, connection:42, discovery:84 }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; saveAppearance() }
+    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.freePath='';saveAppearance() }
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
     if (action === 'go-home') { state.screen=4; state.activeTab='home'; state.bookingConfirmed=false }
@@ -323,6 +328,7 @@ app.addEventListener('click', event => {
     if (action === 'close-panel') state.customPanel=null
     if (action === 'toggle-dark') { state.darkMode=!state.darkMode; localStorage.setItem('tempo-dark-mode',state.darkMode) }
     if (action === 'toggle-sound') state.soundEnabled ? stopEmotionSound() : startEmotionSound()
+    if (action === 'reset-canvas') { state.model={scaleX:1,scaleY:1,rotate:0};state.freePath='' }
   }
   render()
 })
@@ -330,33 +336,33 @@ app.addEventListener('click', event => {
 app.addEventListener('change', event => {
   if(event.target.matches('[data-reminder]')) state.reminder=event.target.value
   if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo'; saveAppearance(); render() }
+  if(event.target.matches('[data-audio-file]')&&event.target.files?.[0]) { stopEmotionSound();if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=URL.createObjectURL(event.target.files[0]);state.customAudioName=event.target.files[0].name;state.musicProvider=null;state.appearance.sound='custom';startEmotionSound();render() }
 })
 
 let gestureStart=null
 app.addEventListener('pointerdown', event => {
-  if(!event.target.closest('#mood-canvas')) return
-  gestureStart={x:event.clientX,y:event.clientY,time:performance.now(),moves:0,distance:0,lastX:event.clientX,lastY:event.clientY}
+  const canvas=event.target.closest('#mood-canvas');if(!canvas)return
+  const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*350,y=(event.clientY-rect.top)/rect.height*390
+  gestureStart={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,rect,points:[[x,y]],mode:state.creationMode}
+  if(state.creationMode==='free'){state.freePath=`M ${x.toFixed(1)} ${y.toFixed(1)}`;const path=canvas.querySelector('[data-free-path]');if(path)path.setAttribute('d',state.freePath);canvas.querySelector(':scope > p')?.remove()}
+  canvas.setPointerCapture?.(event.pointerId)
 })
 app.addEventListener('pointermove', event => {
   if(!gestureStart || !event.target.closest('#mood-canvas')) return
   const canvas=event.target.closest('#mood-canvas')
-  const dx=event.clientX-gestureStart.lastX,dy=event.clientY-gestureStart.lastY
-  gestureStart.distance+=Math.hypot(dx,dy);gestureStart.moves++
+  if(gestureStart.mode==='model'){
+    const dx=event.clientX-gestureStart.x,dy=event.clientY-gestureStart.y
+    state.model.scaleX=Math.max(.55,Math.min(1.7,1+dx/150));state.model.scaleY=Math.max(.55,Math.min(1.65,1-dy/170));state.model.rotate=Math.max(-24,Math.min(24,dx/8))
+    const model=canvas.querySelector('.model-transform');if(model){model.style.setProperty('--model-x',state.model.scaleX);model.style.setProperty('--model-y',state.model.scaleY);model.style.setProperty('--model-r',`${state.model.rotate}deg`)}
+  } else {
+    const x=(event.clientX-gestureStart.rect.left)/gestureStart.rect.width*350,y=(event.clientY-gestureStart.rect.top)/gestureStart.rect.height*390
+    if(Math.hypot(event.clientX-gestureStart.lastX,event.clientY-gestureStart.lastY)>3){gestureStart.points.push([x,y]);state.freePath=`M ${gestureStart.points.map(point=>`${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(' L ')}`;const path=canvas.querySelector('[data-free-path]');if(path)path.setAttribute('d',state.freePath)}
+  }
   gestureStart.lastX=event.clientX;gestureStart.lastY=event.clientY
-  canvas.style.setProperty('--gesture-x',`${event.offsetX}px`);canvas.style.setProperty('--gesture-y',`${event.offsetY}px`)
-  const elapsed=Math.max(60,performance.now()-gestureStart.time),liveEnergy=Math.round(Math.min(100,Math.max(10,gestureStart.distance/elapsed*72))),liveConnection=Math.round(Math.min(100,Math.max(15,Math.hypot(event.clientX-gestureStart.x,event.clientY-gestureStart.y)/2.4))),liveDiscovery=Math.round(Math.min(100,45+gestureStart.moves*2.2))
-  canvas.style.setProperty('--live-energy',liveEnergy/100);canvas.style.setProperty('--live-connection',liveConnection/100);canvas.style.setProperty('--live-discovery',liveDiscovery/100)
-  ;[['energy',liveEnergy],['connection',liveConnection],['discovery',liveDiscovery]].forEach(([key,value])=>{const output=canvas.querySelector(`[data-live="${key}"]`);if(output)output.textContent=value})
 })
 app.addEventListener('pointerup', () => {
   if(!gestureStart)return
-  const duration=Math.max(100,performance.now()-gestureStart.time)
-  const speed=gestureStart.distance/duration
-  const amplitude=Math.hypot(gestureStart.lastX-gestureStart.x,gestureStart.lastY-gestureStart.y)
-  state.profile.energy=Math.round(Math.min(100,Math.max(10,speed*75)))
-  state.profile.connection=Math.round(Math.min(100,Math.max(15,amplitude/2.4)))
-  state.profile.discovery=Math.round(Math.min(100,45+gestureStart.moves*2.5))
-  gestureStart=null;render()
+  gestureStart=null
 })
 
 window.TempoPrototype={
