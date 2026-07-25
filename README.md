@@ -20,7 +20,8 @@ Toutes les données sont fictives et locales. Aucun framework, service externe, 
 - accueil et recommandations de proximité ;
 - composition gestuelle d’un profil Tempo ;
 - personnalisation de la couleur, de la forme, de la matière, de l’expression et du nom ;
-- modelage tactile d’une forme prédéfinie ou création par dessin libre ;
+- modelage tactile ou dessin libre multi-traits avec crayon, feutre, aquarelle, craie, taille réglable et gomme ;
+- galerie déroulante de 29 expressions dessinées ;
 - bibliothèque locale de profils émotionnels ;
 - paysages sonores, import d’un fichier audio personnel, connexions musicales simulées et mode sombre bleu nuit ;
 - profil émotionnel et recommandations filtrables ;
