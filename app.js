@@ -315,6 +315,9 @@ function render(shouldScroll=true) {
 }
 
 app.addEventListener('click', event => {
+  // An input click must never rebuild the screen: rebuilding replaces the
+  // focused element and makes the caret disappear after the first character.
+  if (event.target.closest('.direct-emotion-name, .profile-name-editor, .emotion-name')) return
   const screenBeforeClick=state.screen
   const emotionButton = event.target.closest('[data-emotion]')
   const intensityButton = event.target.closest('[data-intensity]')
@@ -385,13 +388,29 @@ app.addEventListener('click', event => {
 
 app.addEventListener('change', event => {
   if(event.target.matches('[data-reminder]')) state.reminder=event.target.value
-  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo'; saveAppearance(); render(false) }
+  if(event.target.matches('[data-emotion-name]')) {
+    const finalName=event.target.value.trim()||'Mon émotion'
+    state.profile.name=finalName
+    event.target.value=finalName
+    saveAppearance()
+    const profileTitle=app.querySelector?.('.profile-hero > h1')
+    if(profileTitle)profileTitle.textContent=finalName
+  }
   if(event.target.matches('[data-expression-select]')) { state.appearance.expression=event.target.value;state.appearance.sound=expressionSounds[state.appearance.expression]||'mystery';if(state.soundEnabled)startEmotionSound();saveAppearance();render(false) }
   if(event.target.matches('[data-audio-file]')&&event.target.files?.[0]) { stopEmotionSound();if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=URL.createObjectURL(event.target.files[0]);state.customAudioName=event.target.files[0].name;state.musicProvider=null;state.appearance.sound='custom';startEmotionSound();render(false) }
 })
 app.addEventListener('input', event => {
   if(event.target.matches('[data-brush-size]')) { state.brushSize=Number(event.target.value);const output=event.target.parentElement?.querySelector('output');if(output)output.value=state.brushSize }
-  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo';saveAppearance();const profileTitle=app.querySelector?.('.profile-hero > h1');if(profileTitle)profileTitle.textContent=state.profile.name;const revealLabel=app.querySelector?.('[data-action="reveal"] > span:first-child');if(revealLabel)revealLabel.textContent=`Révéler « ${state.profile.name} »` }
+  if(event.target.matches('[data-emotion-name]')) {
+    const draftName=event.target.value
+    state.profile.name=draftName
+    saveAppearance()
+    const displayedName=draftName.trim()||'Mon émotion'
+    const profileTitle=app.querySelector?.('.profile-hero > h1')
+    if(profileTitle)profileTitle.textContent=displayedName
+    const revealLabel=app.querySelector?.('[data-action="reveal"] > span:first-child')
+    if(revealLabel)revealLabel.textContent=`Révéler « ${displayedName} »`
+  }
 })
 
 let gestureStart=null
