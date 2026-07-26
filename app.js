@@ -1,10 +1,11 @@
 const emotions = [
-  { id: 'happy', label: 'Joyeux', color: '#FFD85A', secondary: '#FFA178', face: 'happy', shape: 'shape-a' },
-  { id: 'calm', label: 'Calme', color: '#A9C878', secondary: '#DCE8B8', face: 'calm', shape: 'shape-b' },
-  { id: 'curious', label: 'Curieux', color: '#C9A8F4', secondary: '#E9B5CC', face: 'curious', shape: 'shape-c' },
-  { id: 'energetic', label: 'Énergique', color: '#FF8A67', secondary: '#FFD85A', face: 'excited', shape: 'shape-d' },
-  { id: 'sad', label: 'Triste', color: '#748DD5', secondary: '#9C82DF', face: 'sad', shape: 'shape-e' },
-  { id: 'stressed', label: 'Stressé', color: '#E98A76', secondary: '#E9B5CC', face: 'worried', shape: 'shape-f' },
+  { id: 'surprised', label: 'Surpris·e', color: '#9C82DF', secondary: '#C9A8F4', face: 'surprised', shape: 'shape-c' },
+  { id: 'sad', label: 'Triste', color: '#748DD5', secondary: '#425D9C', face: 'sad', shape: 'shape-e' },
+  { id: 'disgusted', label: 'Dégoûté·e', color: '#A9C878', secondary: '#748DD5', face: 'disgusted', shape: 'shape-b' },
+  { id: 'happy', label: 'Joyeux·se', color: '#FFD85A', secondary: '#FFA178', face: 'happy', shape: 'shape-a' },
+  { id: 'fear', label: 'Effrayé·e', color: '#E9B5CC', secondary: '#C9A8F4', face: 'nervous', shape: 'shape-f' },
+  { id: 'shame', label: 'Gêné·e', color: '#FFA178', secondary: '#E9B5CC', face: 'shy', shape: 'shape-g' },
+  { id: 'angry', label: 'En colère', color: '#FF8A67', secondary: '#9C82DF', face: 'angry', shape: 'shape-d' },
 ]
 
 const recommendations = [
@@ -33,10 +34,10 @@ const culturalEvents = [
 function emotionRecommendationProfile(){
   const expression=state.appearance.expression
   const groups={
-    calm:['calm','serene','pleased','confident','tired','sad','pensive','crying','shy','bored'],
-    intense:['angry','rage','irritated','disgusted','pain'],
-    bright:['happy','laughing','excited','triumph','silly','flirty','devious'],
-    uncertain:['scared','nervous','confused','concerned','surprised','embarrassed'],
+    calm:['calm','tired','sad','pensive','crying','shy','bored','pouty','embarrassed'],
+    intense:['angry','rage','irritated','disgusted','pain','concerned','devious'],
+    bright:['happy','excited','triumph','pleased','confident','flirty'],
+    uncertain:['scared','nervous','worried','confused','surprised','curious','silly','serious'],
   }
   const mood=Object.keys(groups).find(key=>groups[key].includes(expression))||'curious'
   return {
@@ -58,7 +59,7 @@ try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
 let savedAppearance = {}
 try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
-const state = { screen: onboardingDone ? 4 : 1, navigationHistory:[], emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', searchQuery:'', filtersOpen:false, advancedFilters:[], activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
+const state = { screen: onboardingDone ? 4 : 1, navigationHistory:[], emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Surprise nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', searchQuery:'', filtersOpen:false, advancedFilters:[], activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'surprised', sound:savedAppearance.sound||'mystery' } }
 const app = document.querySelector('#app')
 const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
 function navigateTo(screen){if(screen!==state.screen){state.navigationHistory.push(state.screen);state.screen=screen}}
@@ -216,15 +217,27 @@ function homeScreen() {
 }
 
 const emotionLibrary=[
-  {name:'Curiosité nocturne',color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'},
-  {name:'Énergie solaire',color:'sun',shape:'burst',texture:'smooth',expression:'happy',sound:'chimes'},
-  {name:'Évasion calme',color:'sage',shape:'round',texture:'cloud',expression:'serene',sound:'waves'},
-  {name:'Orage intérieur',color:'coral',shape:'spiky',texture:'grain',expression:'angry',sound:'thunder'},
-  {name:'Mélancolie douce',color:'night',shape:'droop',texture:'watercolor',expression:'sad',sound:'rain'},
-  {name:'Timidité rose',color:'lavender',shape:'soft',texture:'watercolor',expression:'shy',sound:'breeze'},
+  {name:'Surprise nocturne',color:'night',shape:'organic',texture:'grain',expression:'surprised',sound:'mystery'},
+  {name:'Joie solaire',color:'sun',shape:'burst',texture:'smooth',expression:'happy',sound:'chimes'},
+  {name:'Mélancolie douce',color:'night',shape:'droop',texture:'watercolor',expression:'pensive',sound:'rain'},
+  {name:'Dégoût végétal',color:'sage',shape:'wide',texture:'grain',expression:'disgusted',sound:'wind'},
+  {name:'Peur brumeuse',color:'lavender',shape:'soft',texture:'cloud',expression:'nervous',sound:'wind'},
+  {name:'Honte discrète',color:'rose',shape:'soft',texture:'watercolor',expression:'shy',sound:'breeze'},
+  {name:'Colère vive',color:'coral',shape:'spiky',texture:'grain',expression:'angry',sound:'thunder'},
 ]
-const expressionChoices=[['happy','Joyeuse'],['sad','Triste'],['angry','Fâchée'],['confused','Confuse'],['pleased','Satisfaite'],['pain','Peinée'],['scared','Effrayée'],['serious','Sérieuse'],['silly','Espiègle'],['flirty','Charmeuse'],['nervous','Nerveuse'],['tired','Fatiguée'],['surprised','Surprise'],['irritated','Irritée'],['rage','Furieuse'],['disgusted','Dégoûtée'],['confident','Confiante'],['concerned','Préoccupée'],['curious','Curieuse'],['pouty','Boudaire'],['bored','Ennuyée'],['laughing','Hilare'],['embarrassed','Gênée'],['calm','Calme'],['crying','En pleurs'],['devious','Malicieuse'],['pensive','Pensive'],['excited','Émerveillée'],['triumph','Triomphante']]
-const expressionSounds={calm:'waves',pleased:'waves',confident:'waves',happy:'chimes',laughing:'chimes',excited:'chimes',triumph:'chimes',angry:'thunder',rage:'thunder',irritated:'thunder',sad:'rain',crying:'rain',pensive:'rain',nervous:'wind',scared:'wind',concerned:'wind',curious:'mystery',confused:'mystery',silly:'mystery'}
+const onboardingPresetIndex={surprised:0,happy:1,sad:2,disgusted:3,fear:4,shame:5,angry:6}
+const emotionFamilies=[
+  {name:'Joie',choices:[['happy','Joyeux·se'],['excited','Heureux·se'],['triumph','Fier·e'],['pleased','Satisfait·e'],['confident','Motivé·e'],['flirty','Aimant·e']]},
+  {name:'Surprise',choices:[['surprised','Surpris·e'],['confused','Perplexe'],['curious','Indécis·e'],['silly','Étonné·e']]},
+  {name:'Tristesse',choices:[['sad','Triste'],['crying','Bouleversé·e'],['tired','Déprimé·e'],['bored','Vide'],['pensive','Mélancolique'],['pouty','Déçu·e']]},
+  {name:'Dégoût',choices:[['disgusted','Dégoûté·e'],['pain','Écœuré·e'],['concerned','Mal à l’aise']]},
+  {name:'Peur',choices:[['nervous','Anxieux·se'],['worried','Inquiet·ète'],['scared','Terrifié·e'],['serious','Vulnérable']]},
+  {name:'Honte',choices:[['shy','Honteux·se'],['embarrassed','Embarrassé·e'],['calm','Gêné·e']]},
+  {name:'Colère',choices:[['angry','En colère'],['rage','Enragé·e'],['irritated','Irrité·e'],['devious','Révolté·e']]},
+]
+const expressionChoices=emotionFamilies.flatMap(family=>family.choices)
+const expressionSounds={calm:'waves',pleased:'chimes',confident:'chimes',happy:'chimes',excited:'chimes',triumph:'chimes',angry:'thunder',rage:'thunder',irritated:'thunder',devious:'thunder',disgusted:'wind',pain:'wind',sad:'rain',crying:'rain',pensive:'rain',tired:'rain',bored:'rain',nervous:'wind',scared:'wind',worried:'wind',concerned:'wind',shy:'breeze',embarrassed:'breeze',curious:'mystery',confused:'mystery',surprised:'mystery',silly:'mystery'}
+if(!expressionChoices.some(([value])=>value===state.appearance.expression))state.appearance.expression={laughing:'happy',serene:'calm'}[state.appearance.expression]||'surprised'
 const intensityNames=['','Très légère','Légère','Présente','Forte','Très forte']
 const colorSets={night:['#425D9C','#9C82DF','#E9B5CC'],sun:['#FFD85A','#FFA178','#FF8A67'],sage:['#A9C878','#748DD5','#C9A8F4'],coral:['#FF8A67','#E9B5CC','#9C82DF'],lavender:['#C9A8F4','#9C82DF','#748DD5'],rose:['#F2C6D8','#E989B4','#B98BD4'],ocean:['#75D5D0','#4C9DD8','#425D9C'],mint:['#D8EAA8','#8ED1B2','#74AFC4'],sunset:['#FFD85A','#FF8A67','#9C82DF'],earth:['#D9B58C','#A9C878','#7D6B5D']}
 const appearanceNames={
@@ -249,8 +262,8 @@ function customizationPanel() {
     shape:`<div class="choice-grid shapes scroll-choices">${[['organic','Organique'],['round','Ronde'],['wide','Étendue'],['burst','Vibrante'],['soft','Douce'],['spiky','Tendue'],['droop','Tombante']].map(([value,label])=>`<button class="${state.appearance.shape===value?'active':''}" data-appearance="shape" data-value="${value}"><i class="shape-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     texture:`<div class="choice-grid textures">${[['smooth','Lisse'],['grain','Granuleux'],['cloud','Nébuleux'],['watercolor','Aquarelle']].map(([value,label])=>`<button class="${state.appearance.texture===value?'active':''}" data-appearance="texture" data-value="${value}"><i class="texture-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     intensity:`<div class="creation-intensity"><p>À quel point ressens-tu cette émotion&nbsp;?</p><div class="intensity-slider-wrap"><div class="intensity-value"><span>Intensité choisie</span><output data-intensity-output>${state.intensity}/5</output></div><input type="range" min="1" max="5" step="1" value="${state.intensity}" data-creation-intensity aria-label="Choisir l’intensité de l’émotion, actuellement ${state.intensity} sur 5" style="--intensity-percent:${(state.intensity-1)*25}%"><div class="intensity-scale" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></div><strong data-intensity-label>${intensityNames[state.intensity]}</strong><small>Fais glisser le curseur. Le rythme, la lumière et la présence de la forme s’adaptent immédiatement.</small></div>`,
-    expression:`<div class="expression-picker"><label><span>Choisir dans la liste</span><select data-expression-select>${expressionChoices.map(([value,label])=>`<option value="${value}" ${state.appearance.expression===value?'selected':''}>${label}</option>`).join('')}</select></label><div class="expression-gallery">${expressionChoices.map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-expression="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div></div>`,
-    name:`<label class="emotion-name"><span>Comment s’appelle cette émotion&nbsp;?</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne"><small>Tu pourras toujours la renommer plus tard.</small></label>`,
+    expression:`<div class="expression-picker"><label><span>Choisir dans la liste</span><select data-expression-select>${emotionFamilies.map(family=>`<optgroup label="${family.name}">${family.choices.map(([value,label])=>`<option value="${value}" ${state.appearance.expression===value?'selected':''}>${label}</option>`).join('')}</optgroup>`).join('')}</select></label><div class="expression-gallery expression-families">${emotionFamilies.map(family=>`<section class="expression-family"><h3>${family.name}</h3><div>${family.choices.map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-expression="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div></section>`).join('')}</div></div>`,
+    name:`<label class="emotion-name"><span>Comment s’appelle cette émotion&nbsp;?</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Surprise nocturne"><small>Tu pourras toujours la renommer plus tard.</small></label>`,
     sound:`<div class="sound-picker"><p>Choisis une ambiance créée par Tempo</p><div class="sound-presets">${[['waves','Vagues'],['rain','Pluie'],['thunder','Orage'],['chimes','Carillons'],['wind','Vent'],['mystery','Nuit']].map(([value,label])=>`<button class="${state.appearance.sound===value&&!state.customAudioUrl?'active':''}" data-sound="${value}">${icon('volume',16)}<span>${label}</span></button>`).join('')}</div><label class="audio-upload">${icon('plus',18)}<span><strong>Choisir mon propre son</strong><small>${state.customAudioName||'MP3, WAV ou M4A depuis cet appareil'}</small></span><input type="file" data-audio-file accept="audio/*"></label><div class="music-services"><p>Ou retrouver ta musique</p>${[['spotify','Spotify'],['apple','Apple Music'],['deezer','Deezer']].map(([provider,label])=>`<button data-provider="${provider}" class="${state.musicProvider===provider?'connected':''}"><i class="provider-${provider}"></i><span><strong>${label}</strong><small>${state.musicProvider===provider?'Connecté en mode démo':'Connecter (démo)'}</small></span></button>`).join('')}</div><small class="prototype-note">La connexion est simulée dans ce prototype. Une connexion réelle nécessitera l’autorisation sécurisée du service musical.</small></div>`,
   }
   const titles={color:'Choisis sa couleur',shape:'Dessine sa forme',texture:'Ajoute une matière',intensity:'Règle son intensité',expression:'Donne-lui une expression',name:'Nomme ton émotion',sound:'Associe-lui un son'}
@@ -260,7 +273,7 @@ function customizationPanel() {
 function composeMoodScreen() {
   return `<section class="screen app-screen compose-screen">${appHeader('Composer',true)}
     <div class="screen-title"><p class="kicker">Ton geste, ton ressenti</p><h1>Illustre ton ressenti actuel</h1><p>Personnalise-le, puis modèle ou dessine librement ce que tu ressens.</p></div>
-    <label class="direct-emotion-name"><span>Nom de mon émotion</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne">${icon('edit',17)}</label>
+    <label class="direct-emotion-name"><span>Nom de mon émotion</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Surprise nocturne">${icon('edit',17)}</label>
     <div class="composer-helpers"><button class="library-trigger" data-panel="library">${icon('library',18)}<span><strong>Besoin d’un point de départ&nbsp;?</strong><small>Bibliothèque d’émotions</small></span>${icon('arrowRight',16)}</button><button class="emotion-sound-button ${state.soundEnabled?'active':''}" data-panel="sound">${icon(state.soundEnabled?'volume':'volumeOff',18)}<span>Son<small>${state.customAudioName||state.appearance.sound}</small></span></button></div>${customizationPanel()}
     <div class="creation-toolbar five-tools" aria-label="Personnaliser l’émotion"><button class="${state.customPanel==='color'?'active':''}" data-panel="color">${icon('palette')}<span>Couleur</span></button><button class="${state.customPanel==='shape'?'active':''}" data-panel="shape">${icon('waves')}<span>Forme</span></button><button class="${state.customPanel==='texture'?'active':''}" data-panel="texture">${icon('sparkles')}<span>Matière</span></button><button class="${state.customPanel==='intensity'?'active':''}" data-panel="intensity">${icon('sun')}<span>Intensité</span></button><button class="${state.customPanel==='expression'?'active':''}" data-panel="expression">${icon('heart')}<span>Visage</span></button></div>
     <div class="creation-mode" role="radiogroup" aria-label="Mode de création"><button class="${state.creationMode==='model'?'active':''}" data-mode="model" aria-pressed="${state.creationMode==='model'}">${icon('waves',17)}<span><strong>Modeler la forme</strong><small>Étire et déforme la forme choisie</small></span></button><button class="${state.creationMode==='free'?'active':''}" data-mode="free" aria-pressed="${state.creationMode==='free'}">${icon('edit',17)}<span><strong>Dessin libre</strong><small>Trace une forme avec ton geste</small></span></button></div>
@@ -386,7 +399,7 @@ app.addEventListener('click', event => {
   else if (feeling) { state.desiredFeeling=feeling.dataset.feeling; localStorage.setItem('tempo-desired-feeling',state.desiredFeeling) }
   else if (place) state.places=Math.max(1,Math.min(6,state.places+(place.dataset.place==='plus'?1:-1)))
   else if (panel) state.customPanel=state.customPanel===panel.dataset.panel?null:panel.dataset.panel
-  else if (appearance) { const kind=appearance.dataset.appearance,value=appearance.dataset.value; state.appearance[kind]=value; if(kind==='expression')state.appearance.sound={serene:'waves',happy:'chimes',angry:'thunder',sad:'rain',worried:'wind',shy:'breeze',curious:'mystery',confused:'mystery'}[value]||'mystery'; if(state.soundEnabled)startEmotionSound(); saveAppearance() }
+  else if (appearance) { const kind=appearance.dataset.appearance,value=appearance.dataset.value; state.appearance[kind]=value; if(kind==='expression')state.appearance.sound=expressionSounds[value]||'mystery'; if(state.soundEnabled)startEmotionSound(); saveAppearance() }
   else if (library) { const preset=emotionLibrary[Number(library.dataset.library)]; state.profile.name=preset.name; state.appearance={color:preset.color,shape:preset.shape,texture:preset.texture,expression:preset.expression,sound:preset.sound}; state.customPanel=null; if(state.soundEnabled)startEmotionSound(); saveAppearance() }
   else if (mode) { state.creationMode=mode.dataset.mode; stopEmotionSound() }
   else if (sound) { state.appearance.sound=sound.dataset.sound; if(state.customAudioUrl)URL.revokeObjectURL(state.customAudioUrl);state.customAudioUrl=null;state.customAudioName='';state.musicProvider=null;saveAppearance();startEmotionSound() }
@@ -397,14 +410,14 @@ app.addEventListener('click', event => {
     const action = actionButton.dataset.action
     if (action === 'next' || action === 'skip') state.screen++
     if (action === 'next-onboarding') state.screen=Math.min(3,state.screen+1)
-    if (action === 'skip-onboarding' || action === 'enter-app') { state.screen=4;state.navigationHistory=[];state.activeTab='home';localStorage.setItem('tempo-onboarding-done','true') }
+    if (action === 'skip-onboarding' || action === 'enter-app') { if(action==='enter-app'&&!savedAppearance.name){const preset=emotionLibrary[onboardingPresetIndex[state.emotion]??0];state.profile.name=preset.name;state.appearance={color:preset.color,shape:preset.shape,texture:preset.texture,expression:preset.expression,sound:preset.sound};saveAppearance()}state.screen=4;state.navigationHistory=[];state.activeTab='home';localStorage.setItem('tempo-onboarding-done','true') }
     if (action === 'back') navigateBack()
     if (action === 'restart') { state.screen = 1; state.confirmed = false }
     if (action === 'save') state.saved = !state.saved
     if (action === 'confirm') state.confirmed ? navigateTo(4) : state.confirmed = true
     if (action === 'reveal') navigateTo(6)
     if (action === 'recommendations') { navigateTo(7);state.activeTab='explore' }
-    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.redoStrokes=[];state.brush='pencil';state.brushSize=24;state.eraser=false;saveAppearance() }
+    if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Surprise nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'surprised',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.redoStrokes=[];state.brush='pencil';state.brushSize=24;state.eraser=false;saveAppearance() }
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
     if (action === 'go-home') { state.screen=4;state.navigationHistory=[];state.activeTab='home';state.bookingConfirmed=false }
