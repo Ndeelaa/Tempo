@@ -30,14 +30,39 @@ const culturalEvents = [
   { id:'traversees', title:'Traversées silencieuses', category:'Exposition', venue:'Palais de Tokyo', date:'Jusqu’à 22 h', duration:'Libre', price:'13 €', distance:'4,2 km', compatibility:76, reason:'Un parcours libre pour laisser vagabonder ton attention.', description:'Une exposition qui fait dialoguer espace, silence et mouvement.', tags:['Libre','Visuel','Calme'], visual:'visual-sage' },
 ]
 
+function emotionRecommendationProfile(){
+  const expression=state.appearance.expression
+  const groups={
+    calm:['calm','serene','pleased','confident','tired','sad','pensive','crying','shy','bored'],
+    intense:['angry','rage','irritated','disgusted','pain'],
+    bright:['happy','laughing','excited','triumph','silly','flirty','devious'],
+    uncertain:['scared','nervous','confused','concerned','surprised','embarrassed'],
+  }
+  const mood=Object.keys(groups).find(key=>groups[key].includes(expression))||'curious'
+  return {
+    calm:{summary:'des lieux feutrés, libres et sans pression',order:['silences','matieres','lumieres','murmures'],reasons:{silences:'Son rythme lent prolonge la douceur de ta création.',matieres:'Son parcours libre laisse ton émotion respirer.',lumieres:'Ses images enveloppantes offrent une immersion sans agitation.',murmures:'Ses voix discrètes accompagnent un ressenti intérieur.'}},
+    intense:{summary:'des expériences expressives qui donnent de l’espace à ce que tu ressens',order:['lumieres','murmures','matieres','silences'],reasons:{lumieres:'Ses mouvements lumineux font écho à la tension expressive de ta forme.',murmures:'La puissance des voix offre un exutoire culturel sans foule excessive.',matieres:'Les textures permettent de canaliser ton ressenti par la curiosité.',silences:'Son contraste calme peut créer une vraie rupture de rythme.'}},
+    bright:{summary:'des expériences vivantes, lumineuses et partageables',order:['lumieres','murmures','matieres','silences'],reasons:{lumieres:'Sa lumière vibrante prolonge le caractère joyeux de ton émotion.',murmures:'Une expérience collective à taille humaine, pleine de présence.',matieres:'Un parcours ludique qui nourrit ton envie de mouvement.',silences:'Une proposition plus posée pour faire durer ce bel élan.'}},
+    uncertain:{summary:'des expériences rassurantes avec une petite part de surprise',order:['silences','matieres','murmures','lumieres'],reasons:{silences:'Un cadre intime et prévisible, avec juste assez d’évasion.',matieres:'Tu avances librement, sans horaire ni parcours imposé.',murmures:'La proximité des voix crée une présence douce et contenue.',lumieres:'Une immersion visuelle sans interaction sociale obligatoire.'}},
+    curious:{summary:'des expériences singulières, visuelles et légèrement inattendues',order:['matieres','lumieres','silences','murmures'],reasons:{matieres:'Ses matières inattendues répondent au caractère exploratoire de ta création.',lumieres:'Ses formes mouvantes prolongent ton univers visuel.',silences:'Une narration sensible qui laisse une place à l’interprétation.',murmures:'Un format rare qui stimule l’imaginaire autrement.'}},
+  }[mood]
+}
+
+function personalizedRecommendations(){
+  const profile=emotionRecommendationProfile(),byId=Object.fromEntries(culturalEvents.map(event=>[event.id,event]))
+  return profile.order.map((id,index)=>({...byId[id],compatibility:Math.max(78,94-index*4),reason:`Pour « ${state.profile.name} » : ${profile.reasons[id]}`}))
+}
+
 let storedFavorites = []
 try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[]') } catch (_) { storedFavorites = [] }
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
 let savedAppearance = {}
 try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
-const state = { screen: onboardingDone ? 4 : 1, emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
+const state = { screen: onboardingDone ? 4 : 1, navigationHistory:[], emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
 const app = document.querySelector('#app')
 const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
+function navigateTo(screen){if(screen!==state.screen){state.navigationHistory.push(state.screen);state.screen=screen}}
+function navigateBack(){if(state.screen<=3)state.screen=Math.max(1,state.screen-1);else state.screen=state.navigationHistory.pop()||4}
 
 const icon = (name, size = 20) => {
   const paths = {
@@ -233,13 +258,13 @@ function composeMoodScreen() {
 }
 
 function profileScreen() {
-  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${createdEmotion('profile-created')}<p class="kicker">Création du jour</p><h1>${escapeHTML(state.profile.name)}</h1><p>Cette émotion unique réunit la forme, les couleurs, la matière et l’expression que tu as choisies.</p></div>
+  return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${createdEmotion('profile-created')}<p class="kicker">Création du jour</p><h1>${escapeHTML(state.profile.name)}</h1><label class="profile-name-editor"><span>Renommer cette émotion</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}">${icon('edit',16)}</label><p>Cette émotion unique réunit la forme, les couleurs, la matière et l’expression que tu as choisies.</p></div>
     <article class="tempo-understood profile-summary"><span>${icon('sparkles')}</span><div><h2>Ton émotion a pris forme</h2><p>Tempo utilise l’univers visuel et sonore que tu as créé pour proposer des expériences culturelles qui lui ressemblent.</p></div></article><p class="privacy-note">${icon('check',14)} Cette création sert uniquement à personnaliser tes recommandations culturelles.</p>
     <div class="bottom-actions flow">${primaryButton('Voir mes recommandations','recommendations')}<button class="secondary-button" data-screen="5">Recomposer mon humeur</button></div></section>`
 }
 
 function recommendationCard(event,index) {
-  return `<article class="recommendation-card variant-${index}" data-event="${event.id}" tabindex="0"><div class="rec-visual ${event.visual}"><span class="compatibility">${event.compatibility} %<small>avec ton Tempo</small></span>${favoriteButton(event.id)}<i></i><i></i></div><div class="rec-copy"><p class="kicker">${event.category}</p><h2>${event.title}</h2><span class="venue">${event.venue}</span><div class="rec-meta"><span>${icon('clock',13)}${event.date}</span><span>${icon('pin',13)}${event.distance}</span><b>${event.price}</b></div><p class="reason">${icon('sparkles',14)}${event.reason}</p><button class="discover-button" data-event="${event.id}">Découvrir ${icon('arrowRight',15)}</button></div></article>`
+  return `<article class="recommendation-card variant-${index}" data-event="${event.id}" tabindex="0"><div class="rec-visual ${event.visual}"><span class="compatibility">${event.compatibility} %<small>avec ton Tempo</small></span>${favoriteButton(event.id)}<i></i><i></i></div><div class="rec-copy"><p class="kicker">${event.category}</p><h2>${event.title}</h2><span class="venue">${event.venue}</span><div class="rec-meta"><span>${icon('clock',13)}${event.date}</span><span>${icon('pin',13)}${event.distance}</span><b>${event.price}</b></div><p class="reason">${icon('sparkles',14)}${escapeHTML(event.reason)}</p><button class="discover-button" data-event="${event.id}">Découvrir ${icon('arrowRight',15)}</button></div></article>`
 }
 
 function emptyState(type='recommendations') {
@@ -253,13 +278,14 @@ function errorState() {
 
 function recommendationsScreen() {
   const filters=['Tous','Aujourd’hui','Gratuit','À moins de 3 km','Calme','Insolite']
-  let shown = culturalEvents.slice(0,4).filter(event => state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite'))
-  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui suivent ton rythme</h1></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>Ta création émotionnelle du moment</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
+  const recommendationProfile=emotionRecommendationProfile()
+  let shown = personalizedRecommendations().filter(event => state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite'))
+  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui ressemblent à ton émotion</h1><p class="personalized-summary">Tempo privilégie ${recommendationProfile.summary}.</p></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>${expressionChoices.find(([value])=>value===state.appearance.expression)?.[1]||'Expression personnelle'} · recommandations recalculées</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
 }
 
 function eventDetailScreen() {
-  const event = culturalEvents.find(item=>item.id===state.selectedEvent) || culturalEvents[0]
-  return `<section class="app-screen event-page"><div class="event-detail-hero ${event.visual}"><div class="event-floating-actions">${backButton()}<span></span>${favoriteButton(event.id)}<button class="icon-button" aria-label="Partager">${icon('share')}</button></div><div class="liquid l1"></div><div class="liquid l2"></div><span class="compatibility large">${event.compatibility} % avec ton Tempo</span></div><div class="event-body"><p class="kicker">${event.category}</p><h1>${event.title}</h1><p class="venue-big">${event.venue}</p><div class="info-grid"><span>${icon('clock')}<b>${event.date}</b></span><span>${icon('pause')}<b>Durée · ${event.duration}</b></span><span>${icon('ticket')}<b>${event.price}</b></span><span>${icon('pin')}<b>${event.distance}</b></span></div><section><h2>Pourquoi cette expérience&nbsp;?</h2><p>Ton Tempo indique un besoin de calme et de découverte. Cette séance propose un environnement intime, une narration lente et une atmosphère visuelle immersive.</p><div class="tag-row">${event.tags.map(tag=>`<span>${tag}</span>`).join('')}</div></section><section><h2>À propos</h2><p>${event.description} La projection se déroule dans une salle de quarante places avec une lumière tamisée.</p></section><section class="small-testimonials"><h2>Ce que les autres ont ressenti</h2><article><b>Lina</b><p>« Une sortie douce qui ne m’a pas demandé trop d’énergie. »</p></article><article><b>Adam</b><p>« J’ai apprécié le calme du lieu et le rythme du film. »</p></article></section><article class="location-card"><div class="map-lines"><i></i><i></i><span>${icon('pin')}</span></div><div><p class="kicker">À 18 min</p><h3>${event.venue.split('—')[0]}</h3><p>12 rue fictive, Paris 11e</p><button>${icon('route',16)}Voir l’itinéraire</button></div></article></div><div class="booking-bar"><div><span>À partir de</span><strong>${event.price}</strong></div><button data-screen="9">Choisir cette sortie ${icon('arrowRight',17)}</button></div></section>`
+  const event = personalizedRecommendations().find(item=>item.id===state.selectedEvent) || personalizedRecommendations()[0]
+  return `<section class="app-screen event-page"><div class="event-detail-hero ${event.visual}"><div class="event-floating-actions">${backButton()}<span></span>${favoriteButton(event.id)}<button class="icon-button" aria-label="Partager">${icon('share')}</button></div><div class="liquid l1"></div><div class="liquid l2"></div><span class="compatibility large">${event.compatibility} % avec ton Tempo</span></div><div class="event-body"><p class="kicker">${event.category}</p><h1>${event.title}</h1><p class="venue-big">${event.venue}</p><div class="info-grid"><span>${icon('clock')}<b>${event.date}</b></span><span>${icon('pause')}<b>Durée · ${event.duration}</b></span><span>${icon('ticket')}<b>${event.price}</b></span><span>${icon('pin')}<b>${event.distance}</b></span></div><section><h2>Pourquoi pour « ${escapeHTML(state.profile.name)} »&nbsp;?</h2><p>${escapeHTML(event.reason.replace(`Pour « ${state.profile.name} » : `,''))}</p><div class="tag-row">${event.tags.map(tag=>`<span>${tag}</span>`).join('')}</div></section><section><h2>À propos</h2><p>${event.description} La projection se déroule dans une salle de quarante places avec une lumière tamisée.</p></section><section class="small-testimonials"><h2>Ce que les autres ont ressenti</h2><article><b>Lina</b><p>« Une sortie douce qui ne m’a pas demandé trop d’énergie. »</p></article><article><b>Adam</b><p>« J’ai apprécié le calme du lieu et le rythme du film. »</p></article></section><article class="location-card"><div class="map-lines"><i></i><i></i><span>${icon('pin')}</span></div><div><p class="kicker">À 18 min</p><h3>${event.venue.split('—')[0]}</h3><p>12 rue fictive, Paris 11e</p><button>${icon('route',16)}Voir l’itinéraire</button></div></article></div><div class="booking-bar"><div><span>À partir de</span><strong>${event.price}</strong></div><button data-screen="9">Choisir cette sortie ${icon('arrowRight',17)}</button></div></section>`
 }
 
 function bookingScreen() {
@@ -316,8 +342,8 @@ app.addEventListener('click', event => {
     state.favorites=state.favorites.includes(id)?state.favorites.filter(item=>item!==id):[...state.favorites,id]
     localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites))
   }
-  else if (eventCard) { state.selectedEvent=eventCard.dataset.event; state.screen=8 }
-  else if (screenButton) { state.screen=Number(screenButton.dataset.screen); if(screenButton.dataset.tab)state.activeTab=screenButton.dataset.tab; if(state.screen===4)state.activeTab='home' }
+  else if (eventCard) { state.selectedEvent=eventCard.dataset.event; navigateTo(8) }
+  else if (screenButton) { navigateTo(Number(screenButton.dataset.screen)); if(screenButton.dataset.tab)state.activeTab=screenButton.dataset.tab; if(state.screen===4)state.activeTab='home' }
   else if (filter) state.activeFilter=filter.dataset.filter
   else if (bookingAction) state.bookingAction=bookingAction.dataset.bookingAction
   else if (feeling) { state.desiredFeeling=feeling.dataset.feeling; localStorage.setItem('tempo-desired-feeling',state.desiredFeeling) }
@@ -334,18 +360,18 @@ app.addEventListener('click', event => {
     const action = actionButton.dataset.action
     if (action === 'next' || action === 'skip') state.screen++
     if (action === 'next-onboarding') state.screen=Math.min(3,state.screen+1)
-    if (action === 'skip-onboarding' || action === 'enter-app') { state.screen=4; state.activeTab='home'; localStorage.setItem('tempo-onboarding-done','true') }
-    if (action === 'back') state.screen--
+    if (action === 'skip-onboarding' || action === 'enter-app') { state.screen=4;state.navigationHistory=[];state.activeTab='home';localStorage.setItem('tempo-onboarding-done','true') }
+    if (action === 'back') navigateBack()
     if (action === 'restart') { state.screen = 1; state.confirmed = false }
     if (action === 'save') state.saved = !state.saved
-    if (action === 'confirm') state.confirmed ? state.screen = 4 : state.confirmed = true
-    if (action === 'reveal') state.screen=6
-    if (action === 'recommendations') { state.screen=7; state.activeTab='explore' }
+    if (action === 'confirm') state.confirmed ? navigateTo(4) : state.confirmed = true
+    if (action === 'reveal') navigateTo(6)
+    if (action === 'recommendations') { navigateTo(7);state.activeTab='explore' }
     if (action === 'reset-mood') { stopEmotionSound(); state.profile={ name:'Curiosité nocturne' }; state.appearance={color:'night',shape:'organic',texture:'grain',expression:'curious',sound:'mystery'}; state.model={scaleX:1,scaleY:1,rotate:0};state.strokes=[];state.redoStrokes=[];state.brush='pencil';state.brushSize=24;state.eraser=false;saveAppearance() }
     if (action === 'toggle-calendar') state.calendar=!state.calendar
     if (action === 'finish-booking') { state.bookingConfirmed=true; if(!state.favorites.includes(state.selectedEvent))state.favorites.push(state.selectedEvent); localStorage.setItem('tempo-favorites',JSON.stringify(state.favorites)) }
-    if (action === 'go-home') { state.screen=4; state.activeTab='home'; state.bookingConfirmed=false }
-    if (action === 'replay-onboarding') { state.screen=1; state.confirmed=false; localStorage.removeItem('tempo-onboarding-done') }
+    if (action === 'go-home') { state.screen=4;state.navigationHistory=[];state.activeTab='home';state.bookingConfirmed=false }
+    if (action === 'replay-onboarding') { state.screen=1;state.navigationHistory=[];state.confirmed=false;localStorage.removeItem('tempo-onboarding-done') }
     if (action === 'close-panel') state.customPanel=null
     if (action === 'toggle-dark') { state.darkMode=!state.darkMode; localStorage.setItem('tempo-dark-mode',state.darkMode) }
     if (action === 'toggle-sound') state.soundEnabled ? stopEmotionSound() : startEmotionSound()
@@ -365,6 +391,7 @@ app.addEventListener('change', event => {
 })
 app.addEventListener('input', event => {
   if(event.target.matches('[data-brush-size]')) { state.brushSize=Number(event.target.value);const output=event.target.parentElement?.querySelector('output');if(output)output.value=state.brushSize }
+  if(event.target.matches('[data-emotion-name]')) { state.profile.name=event.target.value.trim()||'Mon Tempo';saveAppearance();const profileTitle=app.querySelector?.('.profile-hero > h1');if(profileTitle)profileTitle.textContent=state.profile.name;const revealLabel=app.querySelector?.('[data-action="reveal"] > span:first-child');if(revealLabel)revealLabel.textContent=`Révéler « ${state.profile.name} »` }
 })
 
 let gestureStart=null

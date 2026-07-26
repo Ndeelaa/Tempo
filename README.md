@@ -22,6 +22,8 @@ Toutes les données sont fictives et locales. Aucun framework, service externe, 
 - personnalisation de la couleur, de la forme, de la matière, de l’expression et du nom ;
 - modelage tactile ou dessin libre multi-traits avec outils lissés, taille réglable, gomme, annulation et rétablissement ;
 - galerie déroulante de 29 expressions dessinées ;
+- renommage de l’émotion avant, pendant ou après sa création ;
+- recommandations réordonnées et expliquées selon l’expression créée ;
 - bibliothèque locale de profils émotionnels ;
 - paysages sonores, import d’un fichier audio personnel, connexions musicales simulées et mode sombre bleu nuit ;
 - profil émotionnel et recommandations filtrables ;
