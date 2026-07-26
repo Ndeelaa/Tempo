@@ -58,7 +58,7 @@ try { storedFavorites = JSON.parse(localStorage.getItem('tempo-favorites') || '[
 const onboardingDone = localStorage.getItem('tempo-onboarding-done') === 'true'
 let savedAppearance = {}
 try { savedAppearance = JSON.parse(localStorage.getItem('tempo-appearance') || '{}') } catch (_) { savedAppearance = {} }
-const state = { screen: onboardingDone ? 4 : 1, navigationHistory:[], emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
+const state = { screen: onboardingDone ? 4 : 1, navigationHistory:[], emotion: 'sad', intensity: 3, saved: false, confirmed: false, profile:{ name:savedAppearance.name||'Curiosité nocturne' }, favorites:storedFavorites, selectedEvent:'silences', activeFilter:'Tous', searchQuery:'', filtersOpen:false, advancedFilters:[], activeTab:'home', bookingAction:'Réserver', bookingConfirmed:false, desiredFeeling:'Inspiré·e', places:1, reminder:'1 heure avant', calendar:true, darkMode:localStorage.getItem('tempo-dark-mode')==='true', soundEnabled:false, customPanel:null, creationMode:'model', model:{scaleX:1,scaleY:1,rotate:0}, strokes:[], redoStrokes:[], brush:'pencil', brushSize:24, eraser:false, musicProvider:null, customAudioUrl:null, customAudioName:'', appearance:{ color:savedAppearance.color||'night', shape:savedAppearance.shape||'organic', texture:savedAppearance.texture||'grain', expression:savedAppearance.expression||'curious', sound:savedAppearance.sound||'mystery' } }
 const app = document.querySelector('#app')
 const escapeHTML = value => String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))
 function navigateTo(screen){if(screen!==state.screen){state.navigationHistory.push(state.screen);state.screen=screen}}
@@ -290,11 +290,27 @@ function errorState() {
   return `<div class="empty-state error-state">${tempoBlob('sleepy-blob')}<h1>Tempo a perdu le rythme</h1><p>Les recommandations n’ont pas pu être chargées. Vérifie ta connexion et réessaie.</p><button class="primary-button" data-screen="7"><span>Réessayer</span><span class="button-icon">${icon('rotate')}</span></button><button class="secondary-button" data-screen="4">Retour à l’accueil</button></div>`
 }
 
+function filteredRecommendations(){
+  const query=state.searchQuery.trim().toLocaleLowerCase('fr')
+  return personalizedRecommendations().filter(event=>{
+    const matchesQuick=state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite')
+    const searchable=[event.title,event.category,event.venue,event.description,...event.tags].join(' ').toLocaleLowerCase('fr')
+    const matchesSearch=!query||searchable.includes(query)
+    const matchesAdvanced=!state.advancedFilters.length||state.advancedFilters.some(filter=>searchable.includes(filter.toLocaleLowerCase('fr')))
+    return matchesQuick&&matchesSearch&&matchesAdvanced
+  })
+}
+
+function recommendationResults(events){
+  return events.length ? events.map(recommendationCard).join('') : emptyState()
+}
+
 function recommendationsScreen() {
   const filters=['Tous','Aujourd’hui','Gratuit','À moins de 3 km','Calme','Insolite']
+  const advanced=['Cinéma','Exposition','Immersif','Intime','Sonore']
   const recommendationProfile=emotionRecommendationProfile()
-  let shown = personalizedRecommendations().filter(event => state.activeFilter === 'Tous' || state.activeFilter === 'Aujourd’hui' && event.date.includes('Aujourd’hui') || state.activeFilter === 'Gratuit' && event.price === 'Gratuit' || state.activeFilter === 'À moins de 3 km' && parseFloat(event.distance.replace(',','.')) < 3 || state.activeFilter === 'Calme' && event.tags.includes('Calme') || state.activeFilter === 'Insolite' && event.tags.includes('Insolite'))
-  return `<section class="screen app-screen recommendations-screen">${appHeader('Pour ton Tempo',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Des expériences qui ressemblent à ton émotion</h1><p class="personalized-summary">Tempo privilégie ${recommendationProfile.summary}.</p></div><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>${expressionChoices.find(([value])=>value===state.appearance.expression)?.[1]||'Expression personnelle'} · recommandations recalculées</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}</div><div class="recommendation-list">${shown.length ? shown.map(recommendationCard).join('') : emptyState()}</div>${bottomNavigation()}</section>`
+  const shown=filteredRecommendations()
+  return `<section class="screen app-screen recommendations-screen">${appHeader('Explorer',true)}<div class="rec-heading"><p class="kicker">${escapeHTML(state.profile.name)} · Paris · Ce soir</p><h1>Explore selon ton Tempo</h1><p class="personalized-summary">Tempo privilégie ${recommendationProfile.summary}.</p></div><label class="explore-search">${icon('search',19)}<span class="sr-only">Rechercher une sortie</span><input type="search" data-search-events value="${escapeHTML(state.searchQuery)}" placeholder="Rechercher un lieu, une activité…" autocomplete="off"></label><article class="nearby-map"><div class="map-preview" aria-hidden="true"><i></i><i></i><i></i><span>${icon('pin',18)}</span></div><div><p class="kicker">Autour de chez toi</p><h2>Explore les sorties sur une carte</h2><p>La carte interactive et la géolocalisation arriveront dans la prochaine partie du projet.</p><span class="coming-badge">Bientôt disponible</span></div></article><article class="profile-strip">${tempoBlob('strip-blob')}<div><strong>${escapeHTML(state.profile.name)}</strong><span>${expressionChoices.find(([value])=>value===state.appearance.expression)?.[1]||'Expression personnelle'} · recommandations recalculées</span></div><button data-screen="5">Modifier</button></article><div class="filter-row">${filters.map(filter=>`<button class="filter-chip ${state.activeFilter===filter?'active':''}" data-filter="${filter}" aria-pressed="${state.activeFilter===filter}">${filter}</button>`).join('')}<button class="filter-chip filter-more ${state.filtersOpen||state.advancedFilters.length?'active':''}" data-action="toggle-filters" aria-expanded="${state.filtersOpen}">${icon('plus',14)}Filtres${state.advancedFilters.length?` (${state.advancedFilters.length})`:''}</button></div>${state.filtersOpen?`<section class="advanced-filters"><div><strong>Filtres</strong><button data-action="clear-advanced">Tout effacer</button></div><p>Type et ambiance</p><div>${advanced.map(filter=>`<button class="${state.advancedFilters.includes(filter)?'active':''}" data-advanced-filter="${filter}" aria-pressed="${state.advancedFilters.includes(filter)}">${filter}</button>`).join('')}</div></section>`:''}<div class="results-heading"><strong data-results-count>${shown.length} ${shown.length>1?'propositions':'proposition'}</strong><span>personnalisées pour toi</span></div><div class="recommendation-list">${recommendationResults(shown)}</div>${bottomNavigation()}</section>`
 }
 
 function eventDetailScreen() {
@@ -331,7 +347,7 @@ function render(shouldScroll=true) {
 app.addEventListener('click', event => {
   // An input click must never rebuild the screen: rebuilding replaces the
   // focused element and makes the caret disappear after the first character.
-  if (event.target.closest('.direct-emotion-name, .profile-name-editor, .emotion-name')) return
+  if (event.target.closest('.direct-emotion-name, .profile-name-editor, .emotion-name, .explore-search')) return
   const screenBeforeClick=state.screen
   const emotionButton = event.target.closest('[data-emotion]')
   const intensityButton = event.target.closest('[data-intensity]')
@@ -339,6 +355,7 @@ app.addEventListener('click', event => {
   const eventCard = event.target.closest('[data-event]')
   const screenButton = event.target.closest('[data-screen]')
   const filter = event.target.closest('[data-filter]')
+  const advancedFilter = event.target.closest('[data-advanced-filter]')
   const bookingAction = event.target.closest('[data-booking-action]')
   const feeling = event.target.closest('[data-feeling]')
   const place = event.target.closest('[data-place]')
@@ -362,6 +379,7 @@ app.addEventListener('click', event => {
   else if (eventCard) { state.selectedEvent=eventCard.dataset.event; navigateTo(8) }
   else if (screenButton) { navigateTo(Number(screenButton.dataset.screen)); if(screenButton.dataset.tab)state.activeTab=screenButton.dataset.tab; if(state.screen===4)state.activeTab='home' }
   else if (filter) state.activeFilter=filter.dataset.filter
+  else if (advancedFilter) { const value=advancedFilter.dataset.advancedFilter;state.advancedFilters=state.advancedFilters.includes(value)?state.advancedFilters.filter(item=>item!==value):[...state.advancedFilters,value] }
   else if (bookingAction) state.bookingAction=bookingAction.dataset.bookingAction
   else if (feeling) { state.desiredFeeling=feeling.dataset.feeling; localStorage.setItem('tempo-desired-feeling',state.desiredFeeling) }
   else if (place) state.places=Math.max(1,Math.min(6,state.places+(place.dataset.place==='plus'?1:-1)))
@@ -396,6 +414,8 @@ app.addEventListener('click', event => {
     if (action === 'undo-stroke'&&state.strokes.length) state.redoStrokes.push(state.strokes.pop())
     if (action === 'redo-stroke'&&state.redoStrokes.length) state.strokes.push(state.redoStrokes.pop())
     if (action === 'toggle-eraser') state.eraser=!state.eraser
+    if (action === 'toggle-filters') state.filtersOpen=!state.filtersOpen
+    if (action === 'clear-advanced') state.advancedFilters=[]
   }
   render(state.screen!==screenBeforeClick)
 })
@@ -424,6 +444,14 @@ app.addEventListener('input', event => {
     if(profileTitle)profileTitle.textContent=displayedName
     const revealLabel=app.querySelector?.('[data-action="reveal"] > span:first-child')
     if(revealLabel)revealLabel.textContent=`Révéler « ${displayedName} »`
+  }
+  if(event.target.matches('[data-search-events]')) {
+    state.searchQuery=event.target.value
+    const shown=filteredRecommendations()
+    const list=app.querySelector?.('.recommendation-list')
+    const count=app.querySelector?.('[data-results-count]')
+    if(list)list.innerHTML=recommendationResults(shown)
+    if(count)count.textContent=`${shown.length} ${shown.length>1?'propositions':'proposition'}`
   }
 })
 
