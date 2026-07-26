@@ -248,7 +248,7 @@ function customizationPanel() {
     color:`<div class="choice-grid colors color-gallery">${[['night','Nuit'],['sun','Solaire'],['sage','Sauge'],['coral','Corail'],['lavender','Lavande'],['rose','Rose'],['ocean','Océan'],['mint','Menthe'],['sunset','Coucher'],['earth','Terre']].map(([value,label])=>`<button class="${state.appearance.color===value?'active':''}" data-appearance="color" data-value="${value}"><i class="color-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     shape:`<div class="choice-grid shapes scroll-choices">${[['organic','Organique'],['round','Ronde'],['wide','Étendue'],['burst','Vibrante'],['soft','Douce'],['spiky','Tendue'],['droop','Tombante']].map(([value,label])=>`<button class="${state.appearance.shape===value?'active':''}" data-appearance="shape" data-value="${value}"><i class="shape-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
     texture:`<div class="choice-grid textures">${[['smooth','Lisse'],['grain','Granuleux'],['cloud','Nébuleux'],['watercolor','Aquarelle']].map(([value,label])=>`<button class="${state.appearance.texture===value?'active':''}" data-appearance="texture" data-value="${value}"><i class="texture-${value}"></i><span>${label}</span></button>`).join('')}</div>`,
-    intensity:`<div class="creation-intensity"><p>À quel point ressens-tu cette émotion&nbsp;?</p><div role="radiogroup" aria-label="Intensité de l’émotion">${[1,2,3,4,5].map(level=>`<button role="radio" aria-checked="${state.intensity===level}" aria-label="Intensité ${level} sur 5, ${intensityNames[level]}" class="${state.intensity===level?'active':''}" data-intensity="${level}"><i style="--level:${level}"></i><span>${level}/5</span></button>`).join('')}</div><strong>Intensité ${state.intensity}/5 · ${intensityNames[state.intensity]}</strong><small>Le rythme, la lumière et la présence de la forme s’adaptent immédiatement.</small></div>`,
+    intensity:`<div class="creation-intensity"><p>À quel point ressens-tu cette émotion&nbsp;?</p><div class="intensity-slider-wrap"><div class="intensity-value"><span>Intensité choisie</span><output data-intensity-output>${state.intensity}/5</output></div><input type="range" min="1" max="5" step="1" value="${state.intensity}" data-creation-intensity aria-label="Choisir l’intensité de l’émotion, actuellement ${state.intensity} sur 5" style="--intensity-percent:${(state.intensity-1)*25}%"><div class="intensity-scale" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></div><strong data-intensity-label>${intensityNames[state.intensity]}</strong><small>Fais glisser le curseur. Le rythme, la lumière et la présence de la forme s’adaptent immédiatement.</small></div>`,
     expression:`<div class="expression-picker"><label><span>Choisir dans la liste</span><select data-expression-select>${expressionChoices.map(([value,label])=>`<option value="${value}" ${state.appearance.expression===value?'selected':''}>${label}</option>`).join('')}</select></label><div class="expression-gallery">${expressionChoices.map(([value,label])=>`<button class="${state.appearance.expression===value?'active':''}" data-expression="${value}"><i><b class="blob-expression expression-${value}"><u></u><u></u><em></em></b></i><span>${label}</span></button>`).join('')}</div></div>`,
     name:`<label class="emotion-name"><span>Comment s’appelle cette émotion&nbsp;?</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}" placeholder="Ex. Curiosité nocturne"><small>Tu pourras toujours la renommer plus tard.</small></label>`,
     sound:`<div class="sound-picker"><p>Choisis une ambiance créée par Tempo</p><div class="sound-presets">${[['waves','Vagues'],['rain','Pluie'],['thunder','Orage'],['chimes','Carillons'],['wind','Vent'],['mystery','Nuit']].map(([value,label])=>`<button class="${state.appearance.sound===value&&!state.customAudioUrl?'active':''}" data-sound="${value}">${icon('volume',16)}<span>${label}</span></button>`).join('')}</div><label class="audio-upload">${icon('plus',18)}<span><strong>Choisir mon propre son</strong><small>${state.customAudioName||'MP3, WAV ou M4A depuis cet appareil'}</small></span><input type="file" data-audio-file accept="audio/*"></label><div class="music-services"><p>Ou retrouver ta musique</p>${[['spotify','Spotify'],['apple','Apple Music'],['deezer','Deezer']].map(([provider,label])=>`<button data-provider="${provider}" class="${state.musicProvider===provider?'connected':''}"><i class="provider-${provider}"></i><span><strong>${label}</strong><small>${state.musicProvider===provider?'Connecté en mode démo':'Connecter (démo)'}</small></span></button>`).join('')}</div><small class="prototype-note">La connexion est simulée dans ce prototype. Une connexion réelle nécessitera l’autorisation sécurisée du service musical.</small></div>`,
@@ -424,6 +424,7 @@ app.addEventListener('click', event => {
 
 app.addEventListener('change', event => {
   if(event.target.matches('[data-reminder]')) state.reminder=event.target.value
+  if(event.target.matches('[data-creation-intensity]')) { state.intensity=Number(event.target.value);render(false) }
   if(event.target.matches('[data-emotion-name]')) {
     const finalName=event.target.value.trim()||'Mon émotion'
     state.profile.name=finalName
@@ -437,6 +438,18 @@ app.addEventListener('change', event => {
 })
 app.addEventListener('input', event => {
   if(event.target.matches('[data-brush-size]')) { state.brushSize=Number(event.target.value);const output=event.target.parentElement?.querySelector('output');if(output)output.value=state.brushSize }
+  if(event.target.matches('[data-creation-intensity]')) {
+    state.intensity=Number(event.target.value)
+    event.target.style.setProperty('--intensity-percent',`${(state.intensity-1)*25}%`)
+    event.target.setAttribute('aria-label',`Choisir l’intensité de l’émotion, actuellement ${state.intensity} sur 5`)
+    const output=app.querySelector?.('[data-intensity-output]')
+    const label=app.querySelector?.('[data-intensity-label]')
+    const current=app.querySelector?.('.current-intensity')
+    if(output)output.value=`${state.intensity}/5`
+    if(label)label.textContent=intensityNames[state.intensity]
+    if(current)current.innerHTML=`<span>Intensité actuelle</span><strong>${state.intensity}/5</strong><small>${intensityNames[state.intensity]}</small>`
+    app.querySelectorAll?.('.tempo-blob, .mood-canvas').forEach(element=>{element.classList.remove('tempo-intensity-1','tempo-intensity-2','tempo-intensity-3','tempo-intensity-4','tempo-intensity-5');element.classList.add(`tempo-intensity-${state.intensity}`);element.style?.setProperty('--tempo-intensity',state.intensity)})
+  }
   if(event.target.matches('[data-emotion-name]')) {
     const draftName=event.target.value
     state.profile.name=draftName
