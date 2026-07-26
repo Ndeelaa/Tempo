@@ -226,6 +226,18 @@ const emotionLibrary=[
 const expressionChoices=[['happy','Joyeuse'],['sad','Triste'],['angry','Fâchée'],['confused','Confuse'],['pleased','Satisfaite'],['pain','Peinée'],['scared','Effrayée'],['serious','Sérieuse'],['silly','Espiègle'],['flirty','Charmeuse'],['nervous','Nerveuse'],['tired','Fatiguée'],['surprised','Surprise'],['irritated','Irritée'],['rage','Furieuse'],['disgusted','Dégoûtée'],['confident','Confiante'],['concerned','Préoccupée'],['curious','Curieuse'],['pouty','Boudaire'],['bored','Ennuyée'],['laughing','Hilare'],['embarrassed','Gênée'],['calm','Calme'],['crying','En pleurs'],['devious','Malicieuse'],['pensive','Pensive'],['excited','Émerveillée'],['triumph','Triomphante']]
 const expressionSounds={calm:'waves',pleased:'waves',confident:'waves',happy:'chimes',laughing:'chimes',excited:'chimes',triumph:'chimes',angry:'thunder',rage:'thunder',irritated:'thunder',sad:'rain',crying:'rain',pensive:'rain',nervous:'wind',scared:'wind',concerned:'wind',curious:'mystery',confused:'mystery',silly:'mystery'}
 const colorSets={night:['#425D9C','#9C82DF','#E9B5CC'],sun:['#FFD85A','#FFA178','#FF8A67'],sage:['#A9C878','#748DD5','#C9A8F4'],coral:['#FF8A67','#E9B5CC','#9C82DF'],lavender:['#C9A8F4','#9C82DF','#748DD5'],rose:['#F2C6D8','#E989B4','#B98BD4'],ocean:['#75D5D0','#4C9DD8','#425D9C'],mint:['#D8EAA8','#8ED1B2','#74AFC4'],sunset:['#FFD85A','#FF8A67','#9C82DF'],earth:['#D9B58C','#A9C878','#7D6B5D']}
+const appearanceNames={
+  color:{night:'palette nocturne',sun:'palette solaire',sage:'palette végétale',coral:'palette corail',lavender:'palette lavande',rose:'palette rose',ocean:'palette océan',mint:'palette menthe',sunset:'palette coucher de soleil',earth:'palette terre'},
+  shape:{organic:'forme organique',round:'forme ronde',wide:'forme étendue',burst:'forme vibrante',soft:'forme douce',spiky:'forme tendue',droop:'forme tombante'},
+  texture:{smooth:'matière lisse',grain:'matière granuleuse',cloud:'matière nébuleuse',watercolor:'matière aquarelle'},
+}
+
+function emotionInsight(){
+  const expression=expressionChoices.find(([value])=>value===state.appearance.expression)?.[1]||'Personnelle'
+  const recommendation=emotionRecommendationProfile()
+  const cues=[appearanceNames.shape[state.appearance.shape],appearanceNames.color[state.appearance.color],appearanceNames.texture[state.appearance.texture]].filter(Boolean)
+  return {expression,cues,recommendation,explanation:`Ton visage exprime une émotion ${expression.toLowerCase()}. La ${cues.join(', la ')} donne à Tempo des indices d’ambiance. Il recherche donc ${recommendation.summary}.`}
+}
 
 function customizationPanel() {
   const panel=state.customPanel
@@ -258,13 +270,15 @@ function composeMoodScreen() {
 }
 
 function profileScreen() {
+  const insight=emotionInsight()
   return `<section class="screen app-screen profile-screen">${appHeader('Ton Tempo du moment',true)}<div class="profile-hero">${createdEmotion('profile-created')}<p class="kicker">Création du jour</p><h1>${escapeHTML(state.profile.name)}</h1><label class="profile-name-editor"><span>Renommer cette émotion</span><input data-emotion-name maxlength="32" value="${escapeHTML(state.profile.name)}">${icon('edit',16)}</label><p>Cette émotion unique réunit la forme, les couleurs, la matière et l’expression que tu as choisies.</p></div>
-    <article class="tempo-understood profile-summary"><span>${icon('sparkles')}</span><div><h2>Ton émotion a pris forme</h2><p>Tempo utilise l’univers visuel et sonore que tu as créé pour proposer des expériences culturelles qui lui ressemblent.</p></div></article><p class="privacy-note">${icon('check',14)} Cette création sert uniquement à personnaliser tes recommandations culturelles.</p>
+    <article class="emotion-reading"><p class="kicker">Ce que ton illustration raconte</p><div class="emotion-identity"><span>${icon('heart',18)}</span><div><small>Expression dominante</small><strong>${insight.expression}</strong></div></div><div class="visual-cues">${insight.cues.map(cue=>`<span>${icon('check',12)}${cue}</span>`).join('')}</div><p>${insight.explanation}</p><small class="interpretation-note">C’est une interprétation créative de tes choix, pas une analyse psychologique.</small></article>
+    <article class="tempo-understood profile-summary"><span>${icon('sparkles')}</span><div><h2>Pourquoi ces recommandations&nbsp;?</h2><p>Tempo compare l’atmosphère de ta création aux lieux, au rythme, au niveau d’interaction et au caractère familier ou surprenant des sorties. Chaque proposition affichera ensuite sa raison précise.</p></div></article><p class="privacy-note">${icon('check',14)} Cette création sert uniquement à personnaliser tes recommandations culturelles.</p>
     <div class="bottom-actions flow">${primaryButton('Voir mes recommandations','recommendations')}<button class="secondary-button" data-screen="5">Recomposer mon humeur</button></div></section>`
 }
 
 function recommendationCard(event,index) {
-  return `<article class="recommendation-card variant-${index}" data-event="${event.id}" tabindex="0"><div class="rec-visual ${event.visual}"><span class="compatibility">${event.compatibility} %<small>avec ton Tempo</small></span>${favoriteButton(event.id)}<i></i><i></i></div><div class="rec-copy"><p class="kicker">${event.category}</p><h2>${event.title}</h2><span class="venue">${event.venue}</span><div class="rec-meta"><span>${icon('clock',13)}${event.date}</span><span>${icon('pin',13)}${event.distance}</span><b>${event.price}</b></div><p class="reason">${icon('sparkles',14)}${escapeHTML(event.reason)}</p><button class="discover-button" data-event="${event.id}">Découvrir ${icon('arrowRight',15)}</button></div></article>`
+  return `<article class="recommendation-card variant-${index}" data-event="${event.id}" tabindex="0"><div class="rec-visual ${event.visual}"><span class="compatibility">${event.compatibility} %<small>avec ton Tempo</small></span>${favoriteButton(event.id)}<i></i><i></i></div><div class="rec-copy"><p class="kicker">${event.category}</p><h2>${event.title}</h2><span class="venue">${event.venue}</span><div class="rec-meta"><span>${icon('clock',13)}${event.date}</span><span>${icon('pin',13)}${event.distance}</span><b>${event.price}</b></div><div class="reason">${icon('sparkles',14)}<p><strong>Pourquoi ça correspond</strong>${escapeHTML(event.reason)}</p></div><button class="discover-button" data-event="${event.id}">Découvrir ${icon('arrowRight',15)}</button></div></article>`
 }
 
 function emptyState(type='recommendations') {
